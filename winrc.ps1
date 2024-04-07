@@ -1,3 +1,7 @@
+$cached_Packages
+$cached_AppxPackages
+$cached_Win32_Products
+
 function Install-Winget {
     <#
     .SYNOPSIS
@@ -13,8 +17,18 @@ function Install-Winget {
     Add-AppxPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle
 }
 
-$cached_Packages
-function Is-Installed-Package {
+function Get-Installed-AppxPackage {
+    param (
+        [string]$Name
+    )
+    if (! $Script:cached_AppxPackages) {
+        Write-Host "Caching Get-AppxPackage"
+        $Script:cached_AppxPackages = Get-AppxPackage | Select-Object -Property Name, Version
+    }
+    $Script:cached_AppxPackages | Where-Object -Property Name -like $Name
+}
+
+function Get-Installed-Package {
     param (
         [string]$Name
     )
@@ -23,11 +37,9 @@ function Is-Installed-Package {
         $Script:cached_Packages = Get-Package    
     }
     $Script:cached_Packages | Where-Object -Property Name -like $Name
-    # Get-Package -Name "$Name" -ErrorAction SilentlyContinue
 }
 
-$cached_Win32_Products
-function Is-Installed-App {
+function Get-Installed-App {
     param (
         [string]$Name
     )
@@ -38,6 +50,17 @@ function Is-Installed-App {
     $Script:cached_Win32_Products | Where-Object -Property Name -like $Name
 }
 
+function Install-Winget-App {
+    param (
+        [string]$Name,
+        [string]$Id
+    )
+    if ($Name) {
+        winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name $Name
+    } elseif ($Id) {
+        winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id $Id
+    }
+}
 function Install-Winget-Apps {
     winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id 'gerardog.gsudo'
     winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id 'Microsoft.PowerShell'
@@ -83,8 +106,4 @@ function Install-Scoop-Apps {
 
     # CLI global
     sudo scoop install --global nodejs-lts
-}
-
-function funcName {
-    
 }
