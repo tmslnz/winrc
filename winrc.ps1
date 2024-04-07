@@ -2,6 +2,11 @@ function Install-PS {
     winget install --silent --id 'Microsoft.PowerShell' --source winget
 }
 
+function Install-Winget-Apps {
+    winget.exe install -e --id gerardog.gsudo
+    winget.exe install -e --id AgileBits.1Password
+}
+
 function Install-Scoop {
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
     Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
