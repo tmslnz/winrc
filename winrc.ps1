@@ -1,5 +1,16 @@
-function Install-PS {
-    winget install --silent --id 'Microsoft.PowerShell' --source winget
+function Install-Winget {
+    <#
+    .SYNOPSIS
+    https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox
+    #>
+    $progressPreference = 'silentlyContinue'
+    Write-Information "Downloading WinGet and its dependencies..."
+    Invoke-WebRequest -Uri https://aka.ms/getwinget -OutFile Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle
+    Invoke-WebRequest -Uri https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx -OutFile Microsoft.VCLibs.x64.14.00.Desktop.appx
+    Invoke-WebRequest -Uri https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx -OutFile Microsoft.UI.Xaml.2.8.x64.appx
+    Add-AppxPackage Microsoft.VCLibs.x64.14.00.Desktop.appx
+    Add-AppxPackage Microsoft.UI.Xaml.2.8.x64.appx
+    Add-AppxPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle
 }
 
 $cached_Packages
@@ -28,12 +39,13 @@ function Is-Installed-App {
 }
 
 function Install-Winget-Apps {
-    winget.exe install -e --id gerardog.gsudo
-    winget.exe install -e --name "HEIF Image Extensions"
-    winget.exe install -e --name "Webp Image Extensions"
-    winget.exe install -e --name "VP9 Video Extensions"
-    winget.exe install -e --name "Web Media Extensions"
-    winget.exe install -e --id AgileBits.1Password
+    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id 'gerardog.gsudo'
+    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id 'Microsoft.PowerShell'
+    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name 'HEIF Image Extensions'
+    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name 'Webp Image Extensions'
+    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name 'VP9 Video Extensions'
+    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name 'Web Media Extensions'
+    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id 'AgileBits.1Password'
 }
 
 function Install-Scoop {
