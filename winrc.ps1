@@ -4,6 +4,10 @@ function Install-PS {
 
 function Install-Winget-Apps {
     winget.exe install -e --id gerardog.gsudo
+    winget.exe install -e --name "HEIF Image Extensions"
+    winget.exe install -e --name "Webp Image Extensions"
+    winget.exe install -e --name "VP9 Video Extensions"
+    winget.exe install -e --name "Web Media Extensions"
     winget.exe install -e --id AgileBits.1Password
 }
 
@@ -15,7 +19,6 @@ function Install-Scoop {
 function Install-Scoop-Apps {
     scoop update
     scoop install git
-    scoop install sudo
     
     scoop bucket add extras
     scoop bucket add nonportable
