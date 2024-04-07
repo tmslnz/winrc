@@ -2,26 +2,30 @@ function Install-PS {
     winget install --silent --id 'Microsoft.PowerShell' --source winget
 }
 
+$cached_Packages
 function Is-Installed-Package {
     param (
-        [string]$name
+        [string]$Name
     )
-    Get-Package -Name "$name" -ErrorAction SilentlyContinue
+    if (! $Script:cached_Packages) {
+        Write-Host "Caching Get-Package"
+        $Script:cached_Packages = Get-Package    
+    }
+    $Script:cached_Packages | Where-Object -Property Name -like $Name
+    # Get-Package -Name "$Name" -ErrorAction SilentlyContinue
 }
 
 $cached_Win32_Products
 function Is-Installed-App {
     param (
-        [string]$name
+        [string]$Name
     )
     if (! $Script:cached_Win32_Products) {
         Write-Host "Caching Get-WmiObject -Class Win32_Product"
         $Script:cached_Win32_Products = Get-WmiObject -Class Win32_Product
     }
-    $cached_Win32_Products | Where-Object -Property Name -like $name
+    $Script:cached_Win32_Products | Where-Object -Property Name -like $Name
 }
-
-Is-Installed-App F
 
 function Install-Winget-Apps {
     winget.exe install -e --id gerardog.gsudo
