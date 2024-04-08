@@ -2,6 +2,17 @@ $cached_Packages
 $cached_AppxPackages
 $cached_Win32_Products
 
+function Create-Profile {
+    if (!(Test-Path -Path $PROFILE)) {
+        New-Item -ItemType File -Path $PROFILE -Force
+    }
+}
+
+function Make-Profile {
+
+}
+
+
 function Install-Winget {
     <#
     .SYNOPSIS
@@ -52,23 +63,24 @@ function Get-Installed-App {
 
 function Install-Winget-App {
     param (
-        [string]$Name,
-        [string]$Id
+        [string]$name,
+        [string]$id
     )
-    if ($Name) {
-        winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name $Name
-    } elseif ($Id) {
-        winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id $Id
+    if ($name) {
+        winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name $name
+    } elseif ($id) {
+        winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id $id
     }
 }
+
 function Install-Winget-Apps {
-    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id 'gerardog.gsudo'
-    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id 'Microsoft.PowerShell'
-    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name 'HEIF Image Extensions'
-    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name 'Webp Image Extensions'
-    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name 'VP9 Video Extensions'
-    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name 'Web Media Extensions'
-    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id 'AgileBits.1Password'
+    Install-Winget-App -id 'gerardog.gsudo'
+    gsudo.exe Install-Winget-App -id 'Microsoft.PowerShell'
+    Install-Winget-App -name 'HEIF Image Extensions'
+    Install-Winget-App -name 'Webp Image Extensions'
+    Install-Winget-App -name 'VP9 Video Extensions'
+    Install-Winget-App -name 'Web Media Extensions'
+    Install-Winget-App -id 'AgileBits.1Password'
 }
 
 function Install-Scoop {
