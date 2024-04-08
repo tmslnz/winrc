@@ -4,9 +4,6 @@ $cached_Win32_Products
 
 function main {
     New-Profile
-    $tmp_dir = New-TemporaryDirectory
-    explorer "$tmp_dir"
-    Remove-Item "$tmp_dir" -Recurse -Force
 }
 
 function Set-Zoxide {
