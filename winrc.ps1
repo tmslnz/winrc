@@ -2,16 +2,54 @@ $cached_Packages
 $cached_AppxPackages
 $cached_Win32_Products
 
-function Create-Profile {
+function main {
+    New-Profile
+    $tmp_dir = New-TemporaryDirectory
+    explorer "$tmp_dir"
+    Remove-Item "$tmp_dir" -Recurse -Force
+}
+
+function Set-Zoxide {
+    Invoke-Expression (& {
+        $hook = if ($PSVersionTable.PSVersion.Major -ge 6) {
+            'pwd'
+        } else {
+            'prompt'
+        } (zoxide init powershell --hook $hook | Out-String)
+    })
+}
+
+function New-Profile {
     if (!(Test-Path -Path $PROFILE)) {
         New-Item -ItemType File -Path $PROFILE -Force
     }
 }
 
-function Make-Profile {
-
+function New-Link () {
+    param(
+        $target,
+        $link
+    )
+    New-Item -Path $link -ItemType SymbolicLink -Value $target
 }
 
+function New-TemporaryDirectory {
+    <#
+    .SYNOPSIS
+    https://stackoverflow.com/a/34559554
+    #>
+    $parent = [System.IO.Path]::GetTempPath()
+    [string] $name = [System.Guid]::NewGuid()
+    New-Item -ItemType Directory -Path (Join-Path $parent $name)
+}
+
+function Disable-Logitech-Webcam-Microphone {
+    sudo Get-PnpDevice -Class AudioEndpoint -FriendlyName "*Logitech*" | Disable-PnpDevice -Confirm $false
+}
+
+function Get-Audio-Devices {
+    Get-PnpDevice -Class AudioEndpoint
+}
 
 function Install-Winget {
     <#
@@ -19,13 +57,14 @@ function Install-Winget {
     https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox
     #>
     $progressPreference = 'silentlyContinue'
+    $tmp_dir = New-TemporaryDirectory
     Write-Information "Downloading WinGet and its dependencies..."
-    Invoke-WebRequest -Uri https://aka.ms/getwinget -OutFile Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle
-    Invoke-WebRequest -Uri https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx -OutFile Microsoft.VCLibs.x64.14.00.Desktop.appx
-    Invoke-WebRequest -Uri https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx -OutFile Microsoft.UI.Xaml.2.8.x64.appx
-    Add-AppxPackage Microsoft.VCLibs.x64.14.00.Desktop.appx
-    Add-AppxPackage Microsoft.UI.Xaml.2.8.x64.appx
-    Add-AppxPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle
+    Invoke-WebRequest -Uri 'https://aka.ms/getwinget' -OutFile "${tmp_dir}\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+    Invoke-WebRequest -Uri 'https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx' -OutFile "${tmp_dir}\Microsoft.VCLibs.x64.14.00.Desktop.appx"
+    Invoke-WebRequest -Uri 'https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx' -OutFile "${tmp_dir}\Microsoft.UI.Xaml.2.8.x64.appx"
+    Add-AppxPackage "${tmp_dir}\Microsoft.VCLibs.x64.14.00.Desktop.appx"
+    Add-AppxPackage "${tmp_dir}\Microsoft.UI.Xaml.2.8.x64.appx"
+    Add-AppxPackage "${tmp_dir}\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
 }
 
 function Get-Installed-AppxPackage {
@@ -119,3 +158,6 @@ function Install-Scoop-Apps {
     # CLI global
     sudo scoop install --global nodejs-lts
 }
+
+
+main
