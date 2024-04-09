@@ -41,6 +41,7 @@ function New-TemporaryDirectory {
 }
 
 function Disable-Logitech-Webcam-Microphone {
+    if (-Not $Env:OS) { return }
     sudo Get-PnpDevice -Class AudioEndpoint -FriendlyName "*Logitech*" | Disable-PnpDevice -Confirm $false
 }
 
@@ -53,6 +54,7 @@ function Install-Winget {
     .SYNOPSIS
     https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox
     #>
+    if (-Not $Env:OS) { return }
     $progressPreference = 'silentlyContinue'
     $tmp_dir = New-TemporaryDirectory
     Write-Information "Downloading WinGet and its dependencies..."
@@ -110,6 +112,7 @@ function Install-Winget-App {
 }
 
 function Install-Winget-Apps {
+    if (-Not $Env:OS) { return }
     Install-Winget-App -id 'gerardog.gsudo'
     gsudo.exe Install-Winget-App -id 'Microsoft.PowerShell'
     Install-Winget-App -name 'HEIF Image Extensions'
@@ -120,11 +123,13 @@ function Install-Winget-Apps {
 }
 
 function Install-Scoop {
+    if (-Not $Env:OS) { return }
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
     Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
 }
 
 function Install-Scoop-Apps {
+    if (-Not (Get-Command scoop -ErrorAction SilentlyContinue)) { return }
     scoop update
     scoop install git
 
