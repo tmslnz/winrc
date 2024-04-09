@@ -81,7 +81,7 @@ function Get-Installed-Package {
     )
     if (! $Script:cached_Packages) {
         Write-Host "Caching Get-Package"
-        $Script:cached_Packages = Get-Package    
+        $Script:cached_Packages = Get-Package
     }
     $Script:cached_Packages | Where-Object -Property Name -like $Name
 }
@@ -127,11 +127,11 @@ function Install-Scoop {
 function Install-Scoop-Apps {
     scoop update
     scoop install git
-    
+
     scoop bucket add extras
     scoop bucket add nonportable
     scoop bucket add nirsoft
-    
+
     scoop bucket add java
 
     # GUI Apps
