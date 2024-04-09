@@ -136,7 +136,6 @@ function Install-Scoop-Apps {
     scoop bucket add extras
     scoop bucket add nonportable
     scoop bucket add nirsoft
-
     scoop bucket add java
 
     # GUI Apps
