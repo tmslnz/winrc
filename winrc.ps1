@@ -8,7 +8,7 @@ function main {
 
 function Get-Username {
     if ($env:userdomain -AND $env:username) {
-        $me = "$($env:userdomain)\$($env:username)"
+        $me = "$($env:username)"
     }
     elseif ($env:LOGNAME) {
         $me = $env:LOGNAME
