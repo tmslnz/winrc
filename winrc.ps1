@@ -75,12 +75,20 @@ function New-Profile {
     }
 }
 
-function New-Link () {
+function New-Symlink () {
     param(
         $target,
         $link
     )
     New-Item -Path $link -ItemType SymbolicLink -Value $target
+}
+
+function New-Hardlink () {
+    param(
+        $target,
+        $link
+    )
+    New-Item -Path $link -ItemType HardLink -Value $target
 }
 
 function New-TemporaryDirectory {
