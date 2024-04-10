@@ -6,14 +6,67 @@ function main {
     New-Profile
 }
 
+function Get-Username {
+    if ($env:userdomain -AND $env:username) {
+        $me = "$($env:userdomain)\$($env:username)"
+    }
+    elseif ($env:LOGNAME) {
+        $me = $env:LOGNAME
+    }
+    else {
+        $me = "[?]"
+    }
+    "$me"
+}
+
+function Test-Is-Admin {
+    if ($isLinux -or $IsMacOS) {
+        if ($(id -g) -eq 0 ) { return $true }
+        else { return $false }
+    }
+    if ($isWindows -or $psEdition -eq 'desktop') {
+        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+        $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+        $adminRole = [Security.Principal.WindowsBuiltInRole]::Administrator
+        if (($principal.IsInRole($adminRole))) { return $true }
+        else { return $false }
+    }
+    $false
+}
+
+function Test-Is-Debug {
+    Test-Path variable:/PSDebugContext
+}
+
+function prompt {
+    $prefix = $(
+        if (Test-Is-Debug) { '[DEBUG] ' }
+        elseif (Test-Is-Admin) { '[ADMIN] ' }
+        else { '' }
+    )
+    $user = $(Get-Username)
+    $hostname = [System.Net.Dns]::GetHostName()
+    $cwd = $(Get-Location)
+    $body = "${user}@${hostname}: ${cwd}"
+    # $pwd = $executionContext.SessionState.Path.CurrentLocation
+    $suffix = $(if ($NestedPromptLevel -ge 1) { '>>' }) + '> '
+    "${prefix}${body} ${suffix}"
+}
+
+function Test-Is-Windows {
+    if ($Env:OS) { return $true }
+    if (-Not $Env:OS) { return $false }
+}
+
 function Set-Zoxide {
     Invoke-Expression (& {
-        $hook = if ($PSVersionTable.PSVersion.Major -ge 6) {
-            'pwd'
-        } else {
-            'prompt'
-        } (zoxide init powershell --hook $hook | Out-String)
-    })
+            $hook = if ($PSVersionTable.PSVersion.Major -ge 6) {
+                'pwd'
+            }
+            else {
+                'prompt'
+            } (zoxide init powershell --hook $hook | Out-String)
+        })
 }
 
 function New-Profile {
@@ -41,7 +94,7 @@ function New-TemporaryDirectory {
 }
 
 function Disable-Logitech-Webcam-Microphone {
-    if (-Not $Env:OS) { return }
+    if (!(Test-Is-Windows)) { return }
     sudo Get-PnpDevice -Class AudioEndpoint -FriendlyName "*Logitech*" | Disable-PnpDevice -Confirm $false
 }
 
@@ -54,7 +107,7 @@ function Install-Winget {
     .SYNOPSIS
     https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox
     #>
-    if (-Not $Env:OS) { return }
+    if (!(Test-Is-Windows)) { return }
     $progressPreference = 'silentlyContinue'
     $tmp_dir = New-TemporaryDirectory
     Write-Information "Downloading WinGet and its dependencies..."
@@ -106,13 +159,14 @@ function Install-Winget-App {
     )
     if ($name) {
         winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name $name
-    } elseif ($id) {
+    }
+    elseif ($id) {
         winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id $id
     }
 }
 
 function Install-Winget-Apps {
-    if (-Not $Env:OS) { return }
+    if (!(Test-Is-Windows)) { return }
     Install-Winget-App -id 'gerardog.gsudo'
     gsudo.exe Install-Winget-App -id 'Microsoft.PowerShell'
     Install-Winget-App -name 'HEIF Image Extensions'
@@ -123,7 +177,7 @@ function Install-Winget-Apps {
 }
 
 function Install-Scoop {
-    if (-Not $Env:OS) { return }
+    if (!(Test-Is-Windows)) { return }
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
     Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
 }
