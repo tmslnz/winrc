@@ -6,6 +6,10 @@ function Main {
     New-Profile
 }
 
+function Set-ExecutionPolicy-Remote {
+    sudo Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
+}
+
 function Write-Section-Append {
     param(
         [string]$String,
