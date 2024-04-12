@@ -31,7 +31,7 @@ function Write-Section-Prepend {
         New-Item $Path -ItemType File
     }
     if (Select-String -Path $Path -Pattern "BEGIN_SHELLRC") { return $false }
-    $result = @($String) + (Get-Content -Path $Path)
+    $result = @($String) + (Get-Content -Raw -Path $Path)
     [IO.File]::WriteAllLines(($Path | Resolve-Path), $result)
 }
 
