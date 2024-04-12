@@ -48,7 +48,8 @@ function Write-Section-Update {
     $result = $result.Replace("`r`n", "`n")
     $String = $String.Replace("`r`n", "`n")
     if ($result -eq $String) { return $false }
-    $content -replace($pattern, $String)
+    $replaced = $content -replace $pattern, $String
+    [IO.File]::WriteAllLines(($Path | Resolve-Path), $replaced)
 }
 
 function Get-Username {
