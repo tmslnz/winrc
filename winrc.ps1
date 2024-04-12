@@ -34,6 +34,17 @@ function Write-Section-Prepend {
     $result = @($String) + (Get-Content -Path $Path)
     [IO.File]::WriteAllLines(($Path | Resolve-Path), $result)
 }
+
+function Write-Section-Update {
+    param(
+        [string]$String,
+        [string]$Path
+    )
+    if (! [System.IO.File]::Exists("$Path")) { return $false }
+    if (! (Select-String -Path $Path -Pattern "BEGIN_SHELLRC")) { return $false }
+    $content = [IO.File]::ReadAllText($Path)
+    $pattern = "(?smi)^.*?BEGIN_SHELLRC(.*?)END_SHELLRC.*?"
+    $result = $content | Select-String -Pattern $pattern -AllMatches | ForEach-Object {$_.Matches} | ForEach-Object {$_.Value}
 function Get-Username {
     if ($env:userdomain -AND $env:username) {
         $me = "$($env:username)"
