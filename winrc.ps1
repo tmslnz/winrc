@@ -6,6 +6,30 @@ function Main {
     New-Profile
 }
 
+function Write-Section-Append {
+    param(
+        [string]$String,
+        [string]$Path
+    )
+    if (! [System.IO.File]::Exists("$Path")) {
+        New-Item $Path -ItemType File
+    }
+    if (Select-String -Path $Path -Pattern "BEGIN_SHELLRC") { return $false }
+    [IO.File]::AppendAllLines(($Path | Resolve-Path), [string[]]$test_str)
+}
+
+function Write-Section-Prepend {
+    param(
+        [string]$String,
+        [string]$Path
+    )
+    if (! [System.IO.File]::Exists("$Path")) {
+        New-Item $Path -ItemType File
+    }
+    if (Select-String -Path $Path -Pattern "BEGIN_SHELLRC") { return $false }
+    $result = @($String) + (Get-Content -Path $Path)
+    [IO.File]::WriteAllLines(($Path | Resolve-Path), $result)
+}
 function Get-Username {
     if ($env:userdomain -AND $env:username) {
         $me = "$($env:username)"
