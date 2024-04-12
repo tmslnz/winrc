@@ -45,6 +45,12 @@ function Write-Section-Update {
     $content = [IO.File]::ReadAllText($Path)
     $pattern = "(?smi)^.*?BEGIN_SHELLRC(.*?)END_SHELLRC.*?"
     $result = $content | Select-String -Pattern $pattern -AllMatches | ForEach-Object {$_.Matches} | ForEach-Object {$_.Value}
+    $result = $result.Replace("`r`n", "`n")
+    $String = $String.Replace("`r`n", "`n")
+    if ($result -eq $String) { return 0 }
+
+}
+
 function Get-Username {
     if ($env:userdomain -AND $env:username) {
         $me = "$($env:username)"
