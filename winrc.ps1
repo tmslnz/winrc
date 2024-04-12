@@ -19,7 +19,7 @@ function Write-Section-Append {
         New-Item $Path -ItemType File
     }
     if (Select-String -Path $Path -Pattern "BEGIN_SHELLRC") { return $false }
-    [IO.File]::AppendAllLines(($Path | Resolve-Path), [string[]]$test_str)
+    [IO.File]::AppendAllLines(($Path | Resolve-Path), [string[]]$String)
 }
 
 function Write-Section-Prepend {
