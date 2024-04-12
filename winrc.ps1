@@ -47,8 +47,8 @@ function Write-Section-Update {
     $result = $content | Select-String -Pattern $pattern -AllMatches | ForEach-Object {$_.Matches} | ForEach-Object {$_.Value}
     $result = $result.Replace("`r`n", "`n")
     $String = $String.Replace("`r`n", "`n")
-    if ($result -eq $String) { return 0 }
-
+    if ($result -eq $String) { return $false }
+    $content -replace($pattern, $String)
 }
 
 function Get-Username {
