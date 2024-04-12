@@ -176,7 +176,7 @@ function Install-Winget-App {
 function Install-Winget-Apps {
     if (!(Test-Is-Windows)) { return }
     Install-Winget-App -id 'gerardog.gsudo'
-    gsudo.exe Install-Winget-App -id 'Microsoft.PowerShell'
+    Install-Winget-App -id 'Microsoft.PowerShell'
     Install-Winget-App -name 'HEIF Image Extensions'
     Install-Winget-App -name 'Webp Image Extensions'
     Install-Winget-App -name 'VP9 Video Extensions'
