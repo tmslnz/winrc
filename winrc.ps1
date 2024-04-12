@@ -2,7 +2,7 @@ $cached_Packages
 $cached_AppxPackages
 $cached_Win32_Products
 
-function main {
+function Main {
     New-Profile
 }
 
@@ -223,4 +223,4 @@ function Install-Scoop-Apps {
 }
 
 
-main
+Main
