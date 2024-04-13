@@ -9,9 +9,13 @@ Set-Config-Npm
 Set-Config-Zoxide
 '@
     $actions.Replace("`r`n", "`n").Split("`n") | ForEach-Object -Process {
-        Get-ChildItem -Path Function:\$_ | Remove-Item
+        $command = [Scriptblock]::Create($_)
+        Invoke-Command -ScriptBlock $command
     }
-    $actions.Replace("`r`n", "`n").Split("`n") | ForEach-Object -Process { Invoke-Expression $_ }
+    $actions.Replace("`r`n", "`n").Split("`n") | ForEach-Object -Process {
+        if ($_.StartsWith('#')) { return }
+        Get-ChildItem -Path "Function:\$_" | Remove-Item
+    }
 }
 
 function Set-ExecutionPolicy-Remote {
