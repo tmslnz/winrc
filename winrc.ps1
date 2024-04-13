@@ -188,8 +188,8 @@ fund=false
 long=true
 ; END_SHELLRC
 '@
-    New-ConfigSection $config $file > $null
-    Update-ConfigSection $config $file > $null
+    New-ConfigSection -String $config -Path $file
+    Update-ConfigSection -String $config -Path $file
 }
 
 function New-Profile {
