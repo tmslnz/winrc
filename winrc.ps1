@@ -46,7 +46,7 @@ function Install-Self {
     else {
         $Value = Join-Path -Path "$PSScriptRoot" -ChildPath 'winrc.ps1'
     }
-    New-Symlink -Path $Path -Target $Value -Force $true
+    New-Symlink -Path $Path -Value $Value -Force
 }
 
 function Set-ExecutionPolicyRemote {
@@ -188,17 +188,11 @@ function New-Profile {
 }
 
 function New-Symlink () {
-    param(
-        $Target,
-        $Path,
-        $Force
-    )
-    if ($null -eq $Force) { $Force = $false }
     try {
-        New-Item -ItemType 'SymbolicLink' -Path $Path -Value $Target -ErrorAction Stop
+        New-Item -ItemType 'SymbolicLink' @args -ErrorAction Stop
     }
     catch {
-        sudo { New-Item -ItemType 'SymbolicLink' -Path $args[0] -Value $args[1] -Force:$args[2] } -args $Path, $Target, $Force
+        sudo { New-Item -ItemType 'SymbolicLink' @args } -args @($args)
     }
 }
 
