@@ -1,6 +1,7 @@
 $cached_Packages
 $cached_AppxPackages
 $cached_Win32_Products
+$QUIET = $true
 
 function Main {
     $actions = @'
@@ -9,7 +10,11 @@ Set-Config-Npm
 Set-Config-Zoxide
 '@
     $actions.Replace("`r`n", "`n").Split("`n") | ForEach-Object -Process {
-        $command = [Scriptblock]::Create($_)
+        if ($QUIET) {
+            $command = [Scriptblock]::Create("$_ > `$null")
+        } else {
+            $command = [Scriptblock]::Create("$_")
+        }
         Invoke-Command -ScriptBlock $command
     }
     $actions.Replace("`r`n", "`n").Split("`n") | ForEach-Object -Process {
