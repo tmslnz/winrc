@@ -267,13 +267,13 @@ function Install-WingetApp {
 
 function Install-WingetApps {
     if (!(Test-IsWindows)) { return }
-    Install-Winget-App -id 'gerardog.gsudo'
-    Install-Winget-App -id 'Microsoft.PowerShell'
-    Install-Winget-App -name 'HEIF Image Extensions'
-    Install-Winget-App -name 'Webp Image Extensions'
-    Install-Winget-App -name 'VP9 Video Extensions'
-    Install-Winget-App -name 'Web Media Extensions'
-    Install-Winget-App -id 'AgileBits.1Password'
+    Install-WingetApp -id 'gerardog.gsudo'
+    Install-WingetApp -id 'Microsoft.PowerShell'
+    Install-WingetApp -name 'HEIF Image Extensions'
+    Install-WingetApp -name 'Webp Image Extensions'
+    Install-WingetApp -name 'VP9 Video Extensions'
+    Install-WingetApp -name 'Web Media Extensions'
+    Install-WingetApp -id 'AgileBits.1Password'
 }
 
 function Install-Scoop {
