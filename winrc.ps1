@@ -265,8 +265,8 @@ function Get-InstalledProgram {
     )
     if (! $Script:cached_Win32_Products) {
         Get-InstalledApplications -GlobalAndCurrentUser |
-            Where-Object -Property DisplayName -like $Name  |
-            Select-Object -Property DisplayName
+        Where-Object -Property DisplayName -like $Name  |
+        Select-Object -Property DisplayName
         # Write-Host "Caching Get-WmiObject -Class Win32_Product"
         # $Script:cached_Win32_Products = Get-WmiObject -Class Win32_Product
         # $Script:cached_Win32_Products = Get-CimInstance -ClassName Win32_Program
