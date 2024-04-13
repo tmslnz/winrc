@@ -3,7 +3,15 @@ $cached_AppxPackages
 $cached_Win32_Products
 
 function Main {
-    New-Profile
+    $actions = @'
+New-Profile
+Set-Config-Npm
+Set-Config-Zoxide
+'@
+    $actions.Replace("`r`n", "`n").Split("`n") | ForEach-Object -Process { $_ }
+    $actions.Replace("`r`n", "`n").Split("`n") | ForEach-Object -Process {
+        Get-ChildItem -Path Function:\$_ | Remove-Item
+    }
 }
 
 function Set-ExecutionPolicy-Remote {
