@@ -194,6 +194,33 @@ long=true
     Update-ConfigSection -String $config -Path $file
 }
 
+function Set-ConfigGit {
+    if (-Not (Test-IsWindows)) { return }
+    if (-Not (Get-Command npm -ErrorAction SilentlyContinue)) { return }
+    $file = "$home\.gitconfig"
+    $config = @'
+# BEGIN_SHELLRC
+
+# END_SHELLRC
+'@
+    New-ConfigSection -String $config -Path $file
+    Update-ConfigSection -String $config -Path $file
+    $file = "$home\.gitignore"
+    $config = @'
+# BEGIN_SHELLRC
+
+# END_SHELLRC
+'@
+    New-ConfigSection -String $config -Path $file
+    Update-ConfigSection -String $config -Path $file
+    $file = "$home\.gitattributes"
+    $config = @'
+# BEGIN_SHELLRC
+
+# END_SHELLRC
+'@
+    New-ConfigSection -String $config -Path $file
+    Update-ConfigSection -String $config -Path $file
 }
 
 function New-Symlink () {
