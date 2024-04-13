@@ -12,7 +12,8 @@ Set-Config-Zoxide
     $actions.Replace("`r`n", "`n").Split("`n") | ForEach-Object -Process {
         if ($QUIET) {
             $command = [Scriptblock]::Create("$_ > `$null")
-        } else {
+        }
+        else {
             $command = [Scriptblock]::Create("$_")
         }
         Invoke-Command -ScriptBlock $command
