@@ -115,6 +115,23 @@ function Set-Zoxide {
         })
 }
 
+function Set-Npm {
+    if (-Not (Get-Command npm -ErrorAction SilentlyContinue)) { return }
+    $file = "$home\.npmrc"
+    $config = @'
+; BEGIN_SHELLRC
+; https://docs.npmjs.com/cli/using-npm/config
+save-exact=true
+prefer-offline=true
+update-notifier=false
+fund=false
+long=true
+; END_SHELLRC
+'@
+    Write-Section-Prepend $config $file
+    Write-Section-Update $config $file
+}
+
 function New-Profile {
     if (!(Test-Path -Path $PROFILE)) {
         New-Item -ItemType File -Path $PROFILE -Force
