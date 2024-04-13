@@ -237,10 +237,14 @@ function Get-Installed-App {
         [string]$Name
     )
     if (! $Script:cached_Win32_Products) {
-        Write-Host "Caching Get-WmiObject -Class Win32_Product"
-        $Script:cached_Win32_Products = Get-WmiObject -Class Win32_Product
+        Get-InstalledApplications -GlobalAndCurrentUser |
+            Where-Object -Property DisplayName -like $Name  |
+            Select-Object -Property DisplayName
+        # Write-Host "Caching Get-WmiObject -Class Win32_Product"
+        # $Script:cached_Win32_Products = Get-WmiObject -Class Win32_Product
+        # $Script:cached_Win32_Products = Get-CimInstance -ClassName Win32_Program
     }
-    $Script:cached_Win32_Products | Where-Object -Property Name -like $Name
+    # $Script:cached_Win32_Products | Where-Object -Property Name -like $Name
 }
 
 function Install-Winget-App {
