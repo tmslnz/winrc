@@ -112,7 +112,7 @@ function Test-Is-Windows {
     if (-Not $Env:OS) { return $false }
 }
 
-function Set-Zoxide {
+function Set-Config-Zoxide {
     Invoke-Expression (& {
             $hook = if ($PSVersionTable.PSVersion.Major -ge 6) {
                 'pwd'
@@ -123,7 +123,7 @@ function Set-Zoxide {
         })
 }
 
-function Set-Npm {
+function Set-Config-Npm {
     if (-Not (Get-Command npm -ErrorAction SilentlyContinue)) { return }
     $file = "$home\.npmrc"
     $config = @'
