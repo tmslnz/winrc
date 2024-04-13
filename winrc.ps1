@@ -24,6 +24,32 @@ Set-ConfigZoxide
     }
 }
 
+function Set-AllowSymlinks {
+    <#
+    .SYNOPSIS
+    https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/secedit-configure
+    #>
+    sudo {
+        secedit /export /cfg c:\secpol.cfg
+        (Get-Content C:\secpol.cfg).replace('SeCreateSymbolicLinkPrivilege = ', 'SeCreateSymbolicLinkPrivilege = " + Environment.UserName + ",') | Out-File C:\secpol.cfg
+        secedit /configure /db c:\windows\security\local.sdb /cfg c:\secpol.cfg /areas SECURITYPOLICY
+        Remove-Item -Force -Path c:\secpol.cfg -Confirm:$false
+    }
+}
+
+function Install-Self {
+    $Path = $PROFILE
+    $ProfileTarget = Get-Item -Path $PROFILE | Select-Object -ExpandProperty Target
+    if ($ProfileTarget) {
+        $Value = Split-Path $ProfileTarget -Parent | Join-Path -ChildPath 'winrc.ps1'
+    } else {
+        $Value = Join-Path -Path "$PSScriptRoot" -ChildPath 'winrc.ps1'
+    }
+    sudo {
+        New-Item -ItemType 'SymbolicLink' -Value $args[1] -Path $args[0] -Force
+    } -args $Path, $Value
+}
+
 function Set-ExecutionPolicyRemote {
     sudo Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
 }
@@ -167,15 +193,12 @@ function New-Symlink () {
         $target,
         $link
     )
-    New-Item -Path $link -ItemType SymbolicLink -Value $target
-}
-
-function New-Hardlink () {
-    param(
-        $target,
-        $link
-    )
-    New-Item -Path $link -ItemType HardLink -Value $target
+    try {
+        New-Item -ItemType 'SymbolicLink' -Path $link -Value $target -ErrorAction Stop
+    }
+    catch {
+        sudo { New-Item -ItemType 'SymbolicLink' -Path $args[0] -Value $args[1] } -args $link, $target
+    }
 }
 
 function New-TemporaryDirectory {
