@@ -5,7 +5,7 @@ $QUIET = $true
 
 function Main {
     $actions = @'
-New-Profile
+Install-Profile
 Set-ConfigNpm
 Set-ConfigZoxide
 '@
@@ -37,7 +37,15 @@ function Set-AllowSymlinks {
     }
 }
 
-function Install-Self {
+function Install-Profile {
+    if ([IO.File]::Exists($PROFILE)) {
+        $dirname = ([IO.FileInfo]$PROFILE).DirectoryName
+        $basename = ([IO.FileInfo]$PROFILE).BaseName
+        $ext = ([IO.FileInfo]$PROFILE).Extension
+        $ts = Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
+        $dest = Join-Path -Path $dirname -ChildPath "${basename}_backup_${ts}${ext}"
+        Copy-Item -Path $PROFILE -Destination $dest
+    }
     $Path = $PROFILE
     $ProfileTarget = Get-Item -Path $PROFILE | Select-Object -ExpandProperty Target
     if ($ProfileTarget) {
