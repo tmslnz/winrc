@@ -212,6 +212,10 @@ function Set-ConfigGit {
     whitespace = space-before-tab,trailing-space
     # https://git-scm.com/docs/git-config#Documentation/git-config.txt-corequotePath
     quotepath = false
+    bigFileThreshold = 64m
+
+[safe]
+    directory = *
 
 [filter "lfs"]
     clean = git-lfs clean -- %f
