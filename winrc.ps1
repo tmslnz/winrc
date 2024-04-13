@@ -142,6 +142,7 @@ long=true
 }
 
 function New-Profile {
+    [IO.File]::Exists("$Path")
     if (!(Test-Path -Path $PROFILE)) {
         New-Item -ItemType File -Path $PROFILE -Force
     }
