@@ -6,8 +6,8 @@ $QUIET = $true
 function Main {
     $actions = @'
 New-Profile
-Set-Config-Npm
-Set-Config-Zoxide
+Set-ConfigNpm
+Set-ConfigZoxide
 '@
     $actions.Replace("`r`n", "`n").Split("`n") | ForEach-Object -Process {
         if ($QUIET) {
