@@ -152,9 +152,9 @@ function prompt {
     $user = $(Get-Username)
     $hostname = [System.Net.Dns]::GetHostName()
     $cwd = $(Get-Location)
-    $body = "${user}@${hostname}: ${cwd}"
+    $body = "`e[1m${user}@`e[2m${hostname}:`e[0m${cwd}"
     # $pwd = $executionContext.SessionState.Path.CurrentLocation
-    $suffix = $(if ($NestedPromptLevel -ge 1) { '>>' }) + '> '
+    $suffix = $(if ($NestedPromptLevel -ge 1) { "`e[2m $ `e[0m" }) + "`e[2m$([char]0x25CF)`e[0m "
     "${prefix}${body} ${suffix}"
 }
 
