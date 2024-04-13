@@ -201,7 +201,36 @@ function Set-ConfigGit {
     $file = "$home\.gitconfig"
     $config = @'
 # BEGIN_SHELLRC
+[init]
+    defaultBranch = main
 
+[core]
+    autocrlf = true
+    eol = native
+    sshCommand = C:/Windows/System32/OpenSSH/ssh.exe
+    # https://git-scm.com/docs/git-config#Documentation/git-config.txt-corewhitespace
+    whitespace = space-before-tab,trailing-space
+    # https://git-scm.com/docs/git-config#Documentation/git-config.txt-corequotePath
+    quotepath = false
+
+[filter "lfs"]
+    clean = git-lfs clean -- %f
+    smudge = git-lfs smudge -- %f
+    process = git-lfs filter-process
+    required = true
+
+[merge]
+    # Include summaries of merged commits in newly created merge commit messages
+    log = true
+
+[credential]
+    helper = wincred
+
+[push]
+    default = simple
+
+[color]
+    ui = auto
 # END_SHELLRC
 '@
     New-ConfigSection -String $config -Path $file
