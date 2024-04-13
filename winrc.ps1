@@ -213,6 +213,8 @@ function Set-ConfigGit {
     # https://git-scm.com/docs/git-config#Documentation/git-config.txt-corequotePath
     quotepath = false
     bigFileThreshold = 64m
+    excludesFile = ~/.config/git/ignore
+    attributesFile = ~/.config/git/attributes
 
 [safe]
     directory = *
@@ -239,15 +241,38 @@ function Set-ConfigGit {
 '@
     New-ConfigSection -String $config -Path $file
     Update-ConfigSection -String $config -Path $file
-    $file = "$home\.gitignore"
+    $file = "$home\.config\git\ignore"
     $config = @'
 # BEGIN_SHELLRC
+# Windows thumbnail cache files
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
 
+# Dump file
+*.stackdump
+
+# Folder config file
+[Dd]esktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
 # END_SHELLRC
 '@
     New-ConfigSection -String $config -Path $file
     Update-ConfigSection -String $config -Path $file
-    $file = "$home\.gitattributes"
+    $file = "$home\.config\git\attributes"
     $config = @'
 # BEGIN_SHELLRC
 
