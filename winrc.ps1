@@ -361,16 +361,16 @@ function Get-InstalledApplications() {
     }
     if ($AllUsers -or $GlobalAndAllUsers) {
         Write-Host "Collecting hive data for all users"
-        $AllProfiles = Get-CimInstance Win32_UserProfile | Select LocalPath, SID, Loaded, Special | Where { $_.SID -like "S-1-5-21-*" }
-        $MountedProfiles = $AllProfiles | Where { $_.Loaded -eq $true }
-        $UnmountedProfiles = $AllProfiles | Where { $_.Loaded -eq $false }
+        $AllProfiles = Get-CimInstance Win32_UserProfile | Select-Object LocalPath, SID, Loaded, Special | Where-Object { $_.SID -like "S-1-5-21-*" }
+        $MountedProfiles = $AllProfiles | Where-Object { $_.Loaded -eq $true }
+        $UnmountedProfiles = $AllProfiles | Where-Object { $_.Loaded -eq $false }
         Write-Host "Processing mounted hives"
-        $MountedProfiles | % {
+        $MountedProfiles | ForEach-Object {
             $Apps += Get-ItemProperty -Path "Registry::\HKEY_USERS\$($_.SID)\$32BitPath"
             $Apps += Get-ItemProperty -Path "Registry::\HKEY_USERS\$($_.SID)\$64BitPath"
         }
         Write-Host "Processing unmounted hives"
-        $UnmountedProfiles | % {
+        $UnmountedProfiles | ForEach-Object {
             $Hive = "$($_.LocalPath)\NTUSER.DAT"
             Write-Host " -> Mounting hive at $Hive"
             if (Test-Path $Hive) {
@@ -387,7 +387,6 @@ function Get-InstalledApplications() {
             }
         }
     }
-
     Write-Output $Apps
 }
 
