@@ -113,6 +113,7 @@ function Test-Is-Windows {
 }
 
 function Set-Config-Zoxide {
+    if (-Not (Get-Command zoxide -ErrorAction SilentlyContinue)) { return }
     Invoke-Expression (& {
             $hook = if ($PSVersionTable.PSVersion.Major -ge 6) {
                 'pwd'
