@@ -8,6 +8,7 @@ function Main {
 Install-Profile
 Set-ConfigNpm
 Set-ConfigZoxide
+Set-ConfigGit
 '@
     $actions.Replace("`r`n", "`n").Split("`n") | ForEach-Object -Process {
         if ($QUIET) {
