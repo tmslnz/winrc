@@ -194,10 +194,6 @@ long=true
     Update-ConfigSection -String $config -Path $file
 }
 
-function New-Profile {
-    if (! [IO.File]::Exists($PROFILE)) {
-        New-Item -ItemType File -Path $PROFILE -Force
-    }
 }
 
 function New-Symlink () {
