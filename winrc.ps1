@@ -151,10 +151,10 @@ function prompt {
     )
     $user = $(Get-Username)
     $hostname = [System.Net.Dns]::GetHostName()
-    $cwd = $(Get-Location)
-    $body = "`e[1m${user}@`e[2m${hostname}:`e[0m${cwd}"
-    # $pwd = $executionContext.SessionState.Path.CurrentLocation
-    $suffix = $(if ($NestedPromptLevel -ge 1) { "`e[2m $ `e[0m" }) + "`e[2m$([char]0x25CF)`e[0m "
+    $cwd = $(Get-Location).Path
+    if ($cwd -eq $HOME) { $cwd = '~' }
+    $body = "${PSStyle.Bold}${user}@${PSStyle.Dim}${hostname}:${PSStyle.Reset}${cwd}"
+    $suffix = $(if ($NestedPromptLevel -ge 1) { "${PSStyle.Dim}$ ${PSStyle.Reset}" }) + "${PSStyle.Dim}$([char]0x25CF)${PSStyle.Reset} "
     "${prefix}${body} ${suffix}"
 }
 
