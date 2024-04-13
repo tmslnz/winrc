@@ -29,28 +29,29 @@ function Set-ExecutionPolicyRemote {
 }
 
 function New-ConfigSection {
+    [cmdletbinding(DefaultParameterSetName = 'Prepend')]
     param(
         [string]$String,
-        [string]$Path
+        [string]$Path,
+        [switch]$Append,
+        [Parameter(ParameterSetName = "Prepend")]
+        [switch]$Prepend
     )
-    if (! [IO.File]::Exists("$Path")) {
-        New-Item $Path -ItemType File
+    # Excplicitly set default param to True if used to allow conditionals to work
+    if ($PSCmdlet.ParameterSetName -eq "Prepend") {
+        $Prepend = $true
     }
-    if (Select-String -Path $Path -Pattern "BEGIN_SHELLRC") { return $false }
-    [IO.File]::AppendAllLines(($Path | Resolve-Path), [string[]]$String)
-}
-
-function Write-Section-Prepend {
-    param(
-        [string]$String,
-        [string]$Path
-    )
     if (! [System.IO.File]::Exists("$Path")) {
         New-Item $Path -ItemType File
     }
     if (Select-String -Path $Path -Pattern "BEGIN_SHELLRC") { return $false }
-    $result = @($String) + (Get-Content -Raw -Path $Path)
-    [IO.File]::WriteAllLines(($Path | Resolve-Path), $result)
+    if ($Prepend) {
+        $result = @($String) + (Get-Content -Raw -Path $Path)
+        [IO.File]::WriteAllLines(($Path | Resolve-Path), $result)
+    }
+    if ($Append) {
+        [IO.File]::AppendAllLines(($Path | Resolve-Path), [string[]]$String)
+    }
 }
 
 function Update-ConfigSection {
