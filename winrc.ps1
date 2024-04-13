@@ -274,6 +274,7 @@ function Install-WingetApps {
     Install-WingetApp -name 'VP9 Video Extensions'
     Install-WingetApp -name 'Web Media Extensions'
     Install-WingetApp -id 'AgileBits.1Password'
+    Install-WingetApp -id 'OpenWhisperSystems.Signal'
 }
 
 function Install-Scoop {
