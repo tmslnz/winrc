@@ -24,11 +24,11 @@ Set-Config-Zoxide
     }
 }
 
-function Set-ExecutionPolicy-Remote {
+function Set-ExecutionPolicyRemote {
     sudo Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
 }
 
-function Write-Section-Append {
+function New-ConfigSection {
     param(
         [string]$String,
         [string]$Path
@@ -53,7 +53,7 @@ function Write-Section-Prepend {
     [IO.File]::WriteAllLines(($Path | Resolve-Path), $result)
 }
 
-function Write-Section-Update {
+function Update-ConfigSection {
     param(
         [string]$String,
         [string]$Path
@@ -83,7 +83,7 @@ function Get-Username {
     "$me"
 }
 
-function Test-Is-Admin {
+function Test-IsAdmin {
     if ($isLinux -or $IsMacOS) {
         if ($(id -g) -eq 0 ) { return $true }
         else { return $false }
@@ -98,14 +98,14 @@ function Test-Is-Admin {
     $false
 }
 
-function Test-Is-Debug {
+function Test-IsDebug {
     Test-Path variable:/PSDebugContext
 }
 
 function prompt {
     $prefix = $(
-        if (Test-Is-Debug) { '[DEBUG] ' }
-        elseif (Test-Is-Admin) { '[ADMIN] ' }
+        if (Test-IsDebug) { '[DEBUG] ' }
+        elseif (Test-IsAdmin) { '[ADMIN] ' }
         else { '' }
     )
     $user = $(Get-Username)
@@ -117,12 +117,12 @@ function prompt {
     "${prefix}${body} ${suffix}"
 }
 
-function Test-Is-Windows {
+function Test-IsWindows {
     if ($Env:OS) { return $true }
     if (-Not $Env:OS) { return $false }
 }
 
-function Set-Config-Zoxide {
+function Set-ConfigZoxide {
     if (-Not (Get-Command zoxide -ErrorAction SilentlyContinue)) { return }
     Invoke-Expression (& {
             $hook = if ($PSVersionTable.PSVersion.Major -ge 6) {
@@ -134,7 +134,7 @@ function Set-Config-Zoxide {
         })
 }
 
-function Set-Config-Npm {
+function Set-ConfigNpm {
     if (-Not (Get-Command npm -ErrorAction SilentlyContinue)) { return }
     $file = "$home\.npmrc"
     $config = @'
@@ -185,11 +185,11 @@ function New-TemporaryDirectory {
 }
 
 function Disable-Logitech-Webcam-Microphone {
-    if (!(Test-Is-Windows)) { return }
+    if (!(Test-IsWindows)) { return }
     sudo Get-PnpDevice -Class AudioEndpoint -FriendlyName "*Logitech*" | Disable-PnpDevice -Confirm $false
 }
 
-function Get-Audio-Devices {
+function Get-AudioDevices {
     Get-PnpDevice -Class AudioEndpoint
 }
 
@@ -198,7 +198,7 @@ function Install-Winget {
     .SYNOPSIS
     https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox
     #>
-    if (!(Test-Is-Windows)) { return }
+    if (!(Test-IsWindows)) { return }
     $progressPreference = 'silentlyContinue'
     $tmp_dir = New-TemporaryDirectory
     Write-Information "Downloading WinGet and its dependencies..."
@@ -210,7 +210,7 @@ function Install-Winget {
     Add-AppxPackage "${tmp_dir}\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
 }
 
-function Get-Installed-AppxPackage {
+function Get-InstalledAppxPackage {
     param (
         [string]$Name
     )
@@ -221,7 +221,7 @@ function Get-Installed-AppxPackage {
     $Script:cached_AppxPackages | Where-Object -Property Name -like $Name
 }
 
-function Get-Installed-Package {
+function Get-InstalledPackage {
     param (
         [string]$Name
     )
@@ -232,7 +232,7 @@ function Get-Installed-Package {
     $Script:cached_Packages | Where-Object -Property Name -like $Name
 }
 
-function Get-Installed-App {
+function Get-InstalledProgram {
     param (
         [string]$Name
     )
@@ -247,7 +247,7 @@ function Get-Installed-App {
     # $Script:cached_Win32_Products | Where-Object -Property Name -like $Name
 }
 
-function Install-Winget-App {
+function Install-WingetApp {
     param (
         [string]$name,
         [string]$id
@@ -260,8 +260,8 @@ function Install-Winget-App {
     }
 }
 
-function Install-Winget-Apps {
-    if (!(Test-Is-Windows)) { return }
+function Install-WingetApps {
+    if (!(Test-IsWindows)) { return }
     Install-Winget-App -id 'gerardog.gsudo'
     Install-Winget-App -id 'Microsoft.PowerShell'
     Install-Winget-App -name 'HEIF Image Extensions'
@@ -272,17 +272,17 @@ function Install-Winget-Apps {
 }
 
 function Install-Scoop {
-    if (!(Test-Is-Windows)) { return }
+    if (!(Test-IsWindows)) { return }
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
     Invoke-RestMethod -Uri 'https://get.scoop.sh' | Invoke-Expression
 }
 
-function Install-Pyenv-Win {
+function Install-Pyenv {
     Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/pyenv-win/pyenv-win/master/pyenv-win/install-pyenv-win.ps1" -OutFile "./install-pyenv-win.ps1"
     & "./install-pyenv-win.ps1"
     Remove-Item "./install-pyenv-win.ps1"
 }
-function Install-Scoop-Apps {
+function Install-ScoopApps {
     if (-Not (Get-Command scoop -ErrorAction SilentlyContinue)) { return }
     scoop update
     scoop install git
