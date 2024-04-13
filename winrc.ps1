@@ -125,11 +125,11 @@ function Get-Username {
 }
 
 function Test-IsAdmin {
-    if ($isLinux -or $IsMacOS) {
+    if (-Not (Test-IsWindows)) {
         if ($(id -g) -eq 0 ) { return $true }
         else { return $false }
     }
-    if ($isWindows -or $psEdition -eq 'desktop') {
+    if ((Test-IsWindows) -or $psEdition -eq 'desktop') {
         $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
         $principal = [Security.Principal.WindowsPrincipal]::new($identity)
         $adminRole = [Security.Principal.WindowsBuiltInRole]::Administrator
@@ -164,6 +164,7 @@ function Test-IsWindows {
 }
 
 function Set-ConfigZoxide {
+    if (-Not (Test-IsWindows)) { return }
     if (-Not (Get-Command zoxide -ErrorAction SilentlyContinue)) { return }
     Invoke-Expression (& {
             $hook = if ($PSVersionTable.PSVersion.Major -ge 6) {
@@ -176,6 +177,7 @@ function Set-ConfigZoxide {
 }
 
 function Set-ConfigNpm {
+    if (-Not (Test-IsWindows)) { return }
     if (-Not (Get-Command npm -ErrorAction SilentlyContinue)) { return }
     $file = "$home\.npmrc"
     $config = @'
