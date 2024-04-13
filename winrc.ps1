@@ -189,8 +189,8 @@ fund=false
 long=true
 ; END_SHELLRC
 '@
-    Write-Section-Prepend $config $file > $null
-    Write-Section-Update $config $file > $null
+    New-ConfigSection $config $file > $null
+    Update-ConfigSection $config $file > $null
 }
 
 function New-Profile {
