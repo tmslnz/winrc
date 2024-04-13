@@ -23,7 +23,7 @@ function Write-Section-Append {
         [string]$String,
         [string]$Path
     )
-    if (! [System.IO.File]::Exists("$Path")) {
+    if (! [IO.File]::Exists("$Path")) {
         New-Item $Path -ItemType File
     }
     if (Select-String -Path $Path -Pattern "BEGIN_SHELLRC") { return $false }
