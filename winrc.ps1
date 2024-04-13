@@ -39,22 +39,26 @@ function Set-AllowSymlinks {
 
 function Install-Profile {
     if ([IO.File]::Exists($PROFILE)) {
-        $dirname = ([IO.FileInfo]$PROFILE).DirectoryName
-        $basename = ([IO.FileInfo]$PROFILE).BaseName
-        $ext = ([IO.FileInfo]$PROFILE).Extension
-        $ts = Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
-        $dest = Join-Path -Path $dirname -ChildPath "${basename}_backup_${ts}${ext}"
-        Copy-Item -Path $PROFILE -Destination $dest
+        if (! (Select-String -Path $PROFILE -Pattern "BEGIN_SHELLRC" -ErrorAction SilentlyContinue)) {
+            $dirname = ([IO.FileInfo]$PROFILE).DirectoryName
+            $basename = ([IO.FileInfo]$PROFILE).BaseName
+            $ext = ([IO.FileInfo]$PROFILE).Extension
+            $ts = Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
+            $dest = Join-Path -Path $dirname -ChildPath "${basename}_backup_${ts}${ext}"
+            Copy-Item -Path $PROFILE -Destination $dest
+        }
     }
-    $Path = $PROFILE
-    $ProfileTarget = Get-Item -Path $PROFILE | Select-Object -ExpandProperty Target
-    if ($ProfileTarget) {
-        $Value = Split-Path $ProfileTarget -Parent | Join-Path -ChildPath 'winrc.ps1'
+    if (! [IO.File]::Exists($PROFILE)) {
+        New-Item -ItemType File -Path $PROFILE -Force
     }
-    else {
-        $Value = Join-Path -Path "$PSScriptRoot" -ChildPath 'winrc.ps1'
-    }
-    New-Symlink -Path $Path -Value $Value -Force
+    $Value = Join-Path -Path "$PSScriptRoot" -ChildPath 'winrc.ps1'
+    $Content = @"
+# BEGIN_SHELLRC
+. $Value
+# END_SHELLRC
+"@
+    New-ConfigSection -String $Content -Path $PROFILE
+    Update-ConfigSection -String $Content -Path $PROFILE
 }
 
 function Set-ExecutionPolicyRemote {
