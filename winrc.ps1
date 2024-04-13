@@ -78,12 +78,11 @@ function New-ConfigSection {
         [Parameter(ParameterSetName = "Prepend")]
         [switch]$Prepend
     )
-    # Excplicitly set default param to True if used to allow conditionals to work
-    if ($PSCmdlet.ParameterSetName -eq "Prepend") {
-        $Prepend = $true
-    }
-    if (! [System.IO.File]::Exists("$Path")) {
-        New-Item $Path -ItemType File
+    $ResolvedPath = Resolve-Path -Path $Path -ErrorAction SilentlyContinue
+    if ($ResolvedPath) { $Path = $ResolvedPath }
+    if ($PSCmdlet.ParameterSetName -eq "Prepend") { $Prepend = $true }
+    if (-Not [IO.File]::Exists($Path)) {
+        New-Item -Path $Path -ItemType File
     }
     if (Select-String -Path $Path -Pattern "BEGIN_SHELLRC") { return $false }
     if ($Prepend) {
