@@ -28,6 +28,10 @@ function Set-ExecutionPolicyRemote {
     sudo Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
 }
 
+function Set-ConfigRhinoceros {
+    $hosts = [Environment]::SystemDirectory + '\drivers\etc\hosts'
+}
+
 function New-ConfigSection {
     [cmdletbinding(DefaultParameterSetName = 'Prepend')]
     param(
