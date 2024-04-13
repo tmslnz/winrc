@@ -83,7 +83,7 @@ function New-ConfigSection {
     if ($ResolvedPath) { $Path = $ResolvedPath }
     if ($PSCmdlet.ParameterSetName -eq "Prepend") { $Prepend = $true }
     if (-Not [IO.File]::Exists($Path)) {
-        New-Item -Path $Path -ItemType File
+        New-Item -Path $Path -ItemType File -Force
     }
     if (Select-String -Path $Path -Pattern "BEGIN_SHELLRC") { return $false }
     if ($Prepend) {
