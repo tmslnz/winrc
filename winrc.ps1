@@ -198,7 +198,7 @@ long=true
 function Set-ConfigGit {
     if (-Not (Test-IsWindows)) { return }
     if (-Not (Get-Command npm -ErrorAction SilentlyContinue)) { return }
-    $file = "$home\.gitconfig"
+    $file = "$home\.config\git\config"
     $config = @'
 # BEGIN_SHELLRC
 [init]
@@ -213,8 +213,6 @@ function Set-ConfigGit {
     # https://git-scm.com/docs/git-config#Documentation/git-config.txt-corequotePath
     quotepath = false
     bigFileThreshold = 64m
-    excludesFile = ~/.config/git/ignore
-    attributesFile = ~/.config/git/attributes
 
 [safe]
     directory = *
