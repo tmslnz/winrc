@@ -54,7 +54,7 @@ function Install-Profile {
     $Value = Join-Path -Path "$PSScriptRoot" -ChildPath 'winrc.ps1'
     $Content = @"
 # BEGIN_SHELLRC
-. $Value
+. '$Value'
 # END_SHELLRC
 "@
     New-ConfigSection -String $Content -Path $PROFILE
