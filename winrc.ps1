@@ -42,7 +42,8 @@ function Install-Self {
     $ProfileTarget = Get-Item -Path $PROFILE | Select-Object -ExpandProperty Target
     if ($ProfileTarget) {
         $Value = Split-Path $ProfileTarget -Parent | Join-Path -ChildPath 'winrc.ps1'
-    } else {
+    }
+    else {
         $Value = Join-Path -Path "$PSScriptRoot" -ChildPath 'winrc.ps1'
     }
     New-Symlink -Path $Path -Target $Value -Force $true
