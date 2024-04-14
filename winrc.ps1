@@ -457,11 +457,6 @@ function Enable-DeveloperMode {
 "AllowAllTrustedApps"=dword:00000001
 '@
     Import-RegSettings $value
-    # sudo {
-    #     $path = 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'
-    #     New-ItemProperty -Path "Registry::$path" -Name 'AllowAllTrustedApps' -Value '1' -PropertyType 'DWord' -Force
-    #     New-ItemProperty -Path "Registry::$path" -Name 'AllowDevelopmentWithoutDevLicense' -Value '1' -PropertyType 'DWord' -Force
-    # }
 }
 
 function Set-ExplorerOptions {
