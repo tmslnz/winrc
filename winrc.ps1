@@ -299,7 +299,7 @@ function New-TemporaryDirectory {
     New-Item -ItemType Directory -Path (Join-Path $parent $name)
 }
 
-function Disable-Logitech-Webcam-Microphone {
+function Disable-LogitechWebcamMicrophone {
     if (!(Test-IsWindows)) { return }
     sudo Get-PnpDevice -Class AudioEndpoint -FriendlyName "*Logitech*" | Disable-PnpDevice -Confirm $false
 }
@@ -431,14 +431,32 @@ function Install-ScoopApps {
     sudo scoop install --global nodejs-lts
 }
 
+function Import-RegSettings {
+    param (
+        [Parameter(Mandatory=$true, Position=0, ParameterSetName = "Value")]
+        [ValidateNotNullOrEmpty()]
+        [string]$Value
+    )
+    if (-Not (Test-IsWindows)) { return }
+    if (-Not (Get-Command sudo -ErrorAction SilentlyContinue)) {
+        Write-Warning -Message 'Please install gsudo first. Aborting.'
+        return
+    }
+    $header = 'Windows Registry Editor Version 5.00'
+    $regString = ($header + "`n" + $Value) -replace "\r?\n", "`r`n"
+    $tempFile = "$env:TEMP\winrc.reg"
+    $regString | Out-File -FilePath "$tempFile" -Encoding unicode
+    sudo reg import "$tempFile"
+    Remove-Item -Path "$tempFile"
+}
+
 function Enable-DeveloperMode {
     $value = @'
 [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock]
 "AllowDevelopmentWithoutDevLicense"=dword:00000001
 "AllowAllTrustedApps"=dword:00000001
 '@
-    ("Windows Registry Editor Version 5.00`n" + $value) -replace "\r?\n", "`r`n" | Out-File -FilePath "$env:TEMP\winrc.reg" -Encoding unicode
-    sudo reg import "$env:TEMP\winrc.reg"
+    Import-RegSettings $value
     # sudo {
     #     $path = 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'
     #     New-ItemProperty -Path "Registry::$path" -Name 'AllowAllTrustedApps' -Value '1' -PropertyType 'DWord' -Force
@@ -506,8 +524,7 @@ function Set-ExplorerOptions {
 ;"TaskbarSmallIcons"=dword:00000000
 ;"WebView"=dword:00000001
 '@
-    ("Windows Registry Editor Version 5.00`n" + $value) -replace "\r?\n", "`r`n" | Out-File "$env:TEMP\winrc.reg" unicode
-    sudo reg import "$env:TEMP\winrc.reg"
+    Import-RegSettings $value
 }
 
 function Set-WindowsOptions {
@@ -538,18 +555,16 @@ function Set-WindowsOptions {
 "Value"="Deny"
 
 '@
-    ("Windows Registry Editor Version 5.00`n" + $value) -replace "\r?\n", "`r`n" | Out-File "$env:TEMP\winrc.reg" unicode
-    sudo reg import "$env:TEMP\winrc.reg"
+    Import-RegSettings $value
 }
 
-function Set-LeftWindowssKeyToCtrl {
+function Set-LeftWindowsKeyToCtrl {
     # https://superuser.com/questions/1264164/how-to-map-windows-key-to-ctrl-key-on-windows-10
     $value = @'
 [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Keyboard Layout]
 "Scancode Map"=hex:00,00,00,00,00,00,00,00,02,00,00,00,1d,00,5b,e0,00,00,00,00
 '@
-    ("Windows Registry Editor Version 5.00`n" + $value) -replace "\r?\n", "`r`n" | Out-File "$env:TEMP\winrc.reg" unicode
-    sudo reg import "$env:TEMP\winrc.reg"
+    Import-RegSettings $value
 }
 
 function Install-SyncthingService {
