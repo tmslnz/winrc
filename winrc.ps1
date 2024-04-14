@@ -430,6 +430,30 @@ function Install-ScoopApps {
     sudo scoop install --global nodejs-lts
 }
 
+function Install-SyncthingService {
+    Write-Information -MessageData 'Create password for user Syncthing' -InformationAction Continue
+    $Secure1 = Read-Host -AsSecureString
+    Write-Information -MessageData 'Re-enter password to verify' -InformationAction Continue
+    $Secure2 = Read-Host -AsSecureString
+    if (-Not $Secure1 -or -Not $Secure2) {
+        return
+    }
+    $pwd1_text = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secure1))
+    $pwd2_text = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secure2))
+    if ($pwd1_text -ne $pwd2_text) {
+        Write-Warning -Message 'Passwords did not match. Try again.' -WarningAction Continue
+        Install-SyncthingService
+        return
+    }
+    sudo {
+        New-LocalUser -AccountNeverExpires -Name 'Syncthing' -PasswordNeverExpires -UserMayNotChangePassword -Password $Secure1
+
+    }
+    # sudo {
+    #     nssm.exe install 'Syncthing' 'C:\Program Files\Syncthing\syncthing.exe'
+    # }
+}
+
 function Get-InstalledApplications() {
     <#
     .SYNOPSIS
