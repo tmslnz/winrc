@@ -385,6 +385,7 @@ function Install-WingetApps {
     Install-WingetApp -name 'Web Media Extensions'
     Install-WingetApp -id 'AgileBits.1Password'
     Install-WingetApp -id 'OpenWhisperSystems.Signal'
+    Install-WingetApp -id 'RandyRants.SharpKeys'
 }
 
 function Install-Scoop {
@@ -446,10 +447,9 @@ function Enable-DeveloperMode {
 }
 
 function Set-ExplorerOptions {
-    # HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced
+    # https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gppref/3c837e92-016e-4148-86e5-b4f0381a757f
     $value = @'
 [HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-; https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gppref/3c837e92-016e-4148-86e5-b4f0381a757f
 
 ; Show all file extensions
 "HideFileExt"=dword:00000000
@@ -505,6 +505,48 @@ function Set-ExplorerOptions {
 ;"TaskbarSizeMove"=dword:00000000
 ;"TaskbarSmallIcons"=dword:00000000
 ;"WebView"=dword:00000001
+'@
+    ("Windows Registry Editor Version 5.00`n" + $value) -replace "\r?\n", "`r`n" | Out-File "$env:TEMP\winrc.reg" unicode
+    sudo reg import "$env:TEMP\winrc.reg"
+}
+
+function Set-WindowsOptions {
+   $value = @'
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy]
+"TailoredExperiencesWithDiagnosticDataEnabled"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy]
+"HasAccepted"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo]
+"Enabled"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Internet Explorer\International]
+"AcceptLanguage"=-
+[HKEY_CURRENT_USER\Control Panel\International\User Profile]
+"HttpAcceptLanguageOptOut"=dword:00000001
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+"Start_TrackProgs"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager]
+"SubscribedContent-338393Enabled"=dword:00000000
+"SubscribedContent-353694Enabled"=dword:00000000
+"SubscribedContent-353696Enabled"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location]
+"Value"="Deny"
+
+'@
+    ("Windows Registry Editor Version 5.00`n" + $value) -replace "\r?\n", "`r`n" | Out-File "$env:TEMP\winrc.reg" unicode
+    sudo reg import "$env:TEMP\winrc.reg"
+}
+
+function Set-LeftWindowssKeyToCtrl {
+    # https://superuser.com/questions/1264164/how-to-map-windows-key-to-ctrl-key-on-windows-10
+    $value = @'
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Keyboard Layout]
+"Scancode Map"=hex:00,00,00,00,00,00,00,00,02,00,00,00,1d,00,5b,e0,00,00,00,00
 '@
     ("Windows Registry Editor Version 5.00`n" + $value) -replace "\r?\n", "`r`n" | Out-File "$env:TEMP\winrc.reg" unicode
     sudo reg import "$env:TEMP\winrc.reg"
