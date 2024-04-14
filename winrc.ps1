@@ -430,6 +430,86 @@ function Install-ScoopApps {
     sudo scoop install --global nodejs-lts
 }
 
+function Enable-DeveloperMode {
+    $value = @'
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock]
+"AllowDevelopmentWithoutDevLicense"=dword:00000001
+"AllowAllTrustedApps"=dword:00000001
+'@
+    ("Windows Registry Editor Version 5.00`n" + $value) -replace "\r?\n", "`r`n" | Out-File -FilePath "$env:TEMP\winrc.reg" -Encoding unicode
+    sudo reg import "$env:TEMP\winrc.reg"
+    # sudo {
+    #     $path = 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'
+    #     New-ItemProperty -Path "Registry::$path" -Name 'AllowAllTrustedApps' -Value '1' -PropertyType 'DWord' -Force
+    #     New-ItemProperty -Path "Registry::$path" -Name 'AllowDevelopmentWithoutDevLicense' -Value '1' -PropertyType 'DWord' -Force
+    # }
+}
+
+function Set-ExplorerOptions {
+    # HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced
+    $value = @'
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+; https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gppref/3c837e92-016e-4148-86e5-b4f0381a757f
+
+; Show all file extensions
+"HideFileExt"=dword:00000000
+
+; Show hidden files
+"Hidden"=dword:00000002
+
+; Displays compressed and encrypted NTFS files in color
+"ShowCompColor"=dword:00000001
+
+; Do not change case of path elements
+"DontPrettyPath"=dword:00000001
+
+; Allow bottom-right hover to show Desktop
+"DisablePreviewDesktop"=dword:00000000
+
+;"AlwaysShowMenus"=dword:00000001
+;"AutoCheckSelect"=dword:00000000
+;"DontUsePowerShellOnWinX"=dword:00000000
+;"ExtendedUIHoverTime"=dword:00000190
+;"Filter"=dword:00000000
+;"HideIcons"=dword:00000000
+;"HideMergeConflicts"=dword:00000000
+;"IconsOnly"=dword:00000000
+;"LastActiveClick"=dword:00000001
+;"LaunchTo"=dword:00000001
+;"ListviewAlphaSelect"=dword:00000001
+;"ListviewShadow"=dword:00000001
+;"MapNetDrvBtn"=dword:00000000
+;"NavPaneExpandToCurrentFolder"=dword:00000000
+;"NavPaneShowAllFolders"=dword:00000001
+;"OnboardUnpinCortana"=dword:00000001
+;"ReindexedProfile"=dword:00000001
+;"SeparateProcess"=dword:00000000
+;"ServerAdminUI"=dword:00000000
+;"ShowCortanaButton"=dword:00000000
+;"ShowEncryptCompressedColor"=dword:00000001
+;"ShowInfoTip"=dword:00000001
+;"ShowStatusBar"=dword:00000001
+;"ShowSuperHidden"=dword:00000001
+;"ShowTaskViewButton"=dword:00000000
+;"ShowTypeOverlay"=dword:00000001
+;"Start_SearchFiles"=dword:00000002
+;"Start_TrackDocs"=dword:00000001
+;"Start_TrackProgs"=dword:00000000
+;"StartMenuInit"=dword:0000000d
+;"StartMigratedBrowserPin"=dword:00000001
+;"StoreAppsOnTaskbar"=dword:00000001
+;"TaskbarAnimations"=dword:00000001
+;"TaskbarAutoHideInTabletMode"=dword:00000000
+;"TaskbarBadges"=dword:00000001
+;"TaskbarGlomLevel"=dword:00000002
+;"TaskbarSizeMove"=dword:00000000
+;"TaskbarSmallIcons"=dword:00000000
+;"WebView"=dword:00000001
+'@
+    ("Windows Registry Editor Version 5.00`n" + $value) -replace "\r?\n", "`r`n" | Out-File "$env:TEMP\winrc.reg" unicode
+    sudo reg import "$env:TEMP\winrc.reg"
+}
+
 function Get-InstalledApplications() {
     <#
     .SYNOPSIS
