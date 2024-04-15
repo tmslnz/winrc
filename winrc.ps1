@@ -416,6 +416,7 @@ gsudo
     scoop bucket add extras
     scoop bucket add nirsoft
     scoop bucket add java
+    scoop bucket add nonportable
 
     # CLI apps
     $list = @'
@@ -455,6 +456,7 @@ blender
 bulk-crap-uninstaller
 cpu-z
 cyberduck
+extras/windowsdesktop-runtime-lts
 cygwin
 dupeguru
 everything
@@ -472,6 +474,7 @@ nssm
 obs-studio
 openedfilesview
 opentabletdriver
+nonportable/zadig-np
 pureref
 rapidee
 registrychangesview
