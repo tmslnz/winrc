@@ -400,35 +400,96 @@ function Install-Pyenv {
     Remove-Item "./install-pyenv-win.ps1"
 }
 function Install-ScoopApps {
-    if (-Not (Get-Command scoop -ErrorAction SilentlyContinue)) { return }
-    scoop update
-    scoop install git
+    if (-Not (Get-Command scoop -ErrorAction SilentlyContinue)) {
 
+    }
+
+    # Core
+    $list = @'
+git
+aria2
+scoop-search
+gsudo
+'@ -Split "`r?`n"
+    scoop install @list
+
+    # Buckets
     scoop bucket add extras
-    scoop bucket add nonportable
     scoop bucket add nirsoft
     scoop bucket add java
 
-    # GUI Apps
-    sudo scoop install --global 7zip
-    sudo scoop install --global bulk-crap-uninstaller
-    sudo scoop install --global cyberduck
-    sudo scoop install --global everything
-    sudo scoop install --global handbrake
-    sudo scoop install --global losslesscut
-    sudo scoop install --global nssm
-    sudo scoop install --global obs-studio
-    sudo scoop install --global rapidee
-    sudo scoop install --global treesize-free
-    sudo scoop install --global vlc
-
     # CLI apps
-    scoop install python
-    scoop install ripgrep
-    scoop install fciv
+    $list = @'
+1password-cli
+bitwarden-cli
+docker
+docker-buildx
+everything-cli
+fd
+ffmpeg
+fzf
+gallery-dl
+handbrake-cli
+iperf3
+mariadb
+msys2
+nmap
+nodejs-lts
+pandoc
+qpdf
+rclone
+shellcheck
+sqlite
+which
+yt-dlp
+zoxide
+'@ -Split "`r?`n"
+    scoop install @list
 
-    # CLI global
-    sudo scoop install --global nodejs-lts
+    # GUI
+$list = @'
+7zip
+advanced-ip-scanner
+audacity
+bleachbit
+blender
+bulk-crap-uninstaller
+cpu-z
+cyberduck
+cygwin
+dupeguru
+everything
+f3d
+freecommander
+ghostwriter
+gpu-z
+handbrake
+heidisql
+inkscape
+krita
+logseq
+losslesscut
+nssm
+obs-studio
+openedfilesview
+opentabletdriver
+pureref
+rapidee
+registrychangesview
+renamer
+searchmyfiles
+sharex
+sharpkeys
+simplenote
+sqlitebrowser
+sumatrapdf
+synctrayzor
+treesize-free
+winaero-tweaker
+xnconvert
+xnviewmp
+'@ -Split "`r?`n"
+    scoop install @list
 }
 
 function Import-RegSettings {
