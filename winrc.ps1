@@ -62,10 +62,6 @@ function Install-Profile {
     Update-ConfigSection -String $Content -Path $PROFILE
 }
 
-function Set-ExecutionPolicyRemote {
-    sudo Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
-}
-
 function Set-ConfigRhinoceros {
     $hosts = [Environment]::SystemDirectory + '\drivers\etc\hosts'
 }
