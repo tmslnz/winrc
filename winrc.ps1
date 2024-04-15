@@ -63,7 +63,26 @@ function Install-Profile {
 }
 
 function Set-ConfigRhinoceros {
+    <#
+    # TODO
     $hosts = [Environment]::SystemDirectory + '\drivers\etc\hosts'
+    #>
+}
+
+function Set-ConfigCyberduck {
+    <#
+    TODO
+    C:\Users\tmslnz\AppData\Roaming\Cyberduck\Cyberduck.user.config
+
+    <setting name="update.check" value="false" />
+    <setting name="queue.window.open.default" value="false" />
+    <setting name="editor.alwaysusedefault" value="true" />
+    <setting name="editor.bundleidentifier" value="c:\program files\sublime text\sublime_text.exe" />
+    <setting name="browser.doubleclick.edit" value="true" />
+    <setting name="browser.enterkey.rename" value="true" />
+    <setting name="browser.move.confirm" value="false" />
+    <setting name="bookmark.toggle.options" value="true" />
+    #>
 }
 
 function New-ConfigSection {
