@@ -397,7 +397,7 @@ function Install-Pyenv {
 }
 function Install-ScoopApps {
     if (-Not (Get-Command scoop -ErrorAction SilentlyContinue)) {
-
+        Install-Scoop
     }
 
     # Core
