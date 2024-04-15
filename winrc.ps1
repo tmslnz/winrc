@@ -450,7 +450,6 @@ zoxide
 $list = @'
 7zip
 cygwin
-nssm
 extras/advanced-ip-scanner
 extras/audacity
 extras/bleachbit
@@ -642,8 +641,9 @@ function Install-SyncthingService {
     }
     sudo {
         New-LocalUser -AccountNeverExpires -Name 'Syncthing' -PasswordNeverExpires -UserMayNotChangePassword -Password $Secure1
-
+        sudo winget install --id NSSM.NSSM --scope machine
     }
+
     # sudo {
     #     nssm.exe install 'Syncthing' 'C:\Program Files\Syncthing\syncthing.exe'
     # }
