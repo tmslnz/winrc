@@ -83,6 +83,10 @@ function Set-ConfigCyberduck {
     <setting name="browser.move.confirm" value="false" />
     <setting name="bookmark.toggle.options" value="true" />
     #>
+    $xml = New-Object XML
+    $xml.Load("$Home\AppData\Roaming\Cyberduck\Cyberduck.user.config")
+    $nodes = $xml.SelectNodes('//setting[@name="CdSettings"]/value/settings/setting')
+    $nodes
 }
 
 function New-ConfigSection {
