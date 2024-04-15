@@ -385,7 +385,7 @@ function Install-WingetApps {
 }
 
 function Install-Scoop {
-    if (!(Test-IsWindows)) { return }
+    if (-Not (Test-IsWindows)) { return }
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
     Invoke-RestMethod -Uri 'https://get.scoop.sh' | Invoke-Expression
 }
