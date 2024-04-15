@@ -372,16 +372,16 @@ function Install-WingetApp {
 }
 
 function Install-WingetApps {
-    if (!(Test-IsWindows)) { return }
-    Install-WingetApp -id 'gerardog.gsudo'
+    if (-Not (Test-IsWindows)) { return }
     Install-WingetApp -id 'Microsoft.PowerShell'
     Install-WingetApp -name 'HEIF Image Extensions'
     Install-WingetApp -name 'Webp Image Extensions'
     Install-WingetApp -name 'VP9 Video Extensions'
     Install-WingetApp -name 'Web Media Extensions'
     Install-WingetApp -id 'AgileBits.1Password'
+    Install-WingetApp -id 'Bitwarden.Bitwarden'
     Install-WingetApp -id 'OpenWhisperSystems.Signal'
-    Install-WingetApp -id 'RandyRants.SharpKeys'
+    Install-WingetApp -id 'VideoLAN.VLC'
 }
 
 function Install-Scoop {
