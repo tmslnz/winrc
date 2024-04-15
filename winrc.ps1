@@ -382,6 +382,9 @@ function Install-WingetApps {
     Install-WingetApp -id 'Bitwarden.Bitwarden'
     Install-WingetApp -id 'OpenWhisperSystems.Signal'
     Install-WingetApp -id 'VideoLAN.VLC'
+    Install-WingetApp -id 'Microsoft.VisualStudioCode'
+    Install-WingetApp -id 'SublimeHQ.SublimeMerge'
+    Install-WingetApp -id 'SublimeHQ.SublimeText.4'
 }
 
 function Install-Scoop {
