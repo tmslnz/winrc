@@ -550,15 +550,6 @@ function Import-RegSettings {
     Remove-Item -Path "$tempFile"
 }
 
-function Enable-DeveloperMode {
-    $value = @'
-[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock]
-"AllowDevelopmentWithoutDevLicense"=dword:00000001
-"AllowAllTrustedApps"=dword:00000001
-'@
-    Import-RegSettings $value
-}
-
 function Set-ExplorerOptions {
     # https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gppref/3c837e92-016e-4148-86e5-b4f0381a757f
     $value = @'
@@ -624,6 +615,10 @@ function Set-ExplorerOptions {
 
 function Set-WindowsOptions {
    $value = @'
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock]
+"AllowDevelopmentWithoutDevLicense"=dword:00000001
+"AllowAllTrustedApps"=dword:00000001
+
 [HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy]
 "TailoredExperiencesWithDiagnosticDataEnabled"=dword:00000000
 
