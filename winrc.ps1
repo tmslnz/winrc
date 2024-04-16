@@ -417,8 +417,8 @@ function Set-ConfigWindows {
 function Set-ConfigKeyboard {
     # https://superuser.com/questions/1264164/how-to-map-windows-key-to-ctrl-key-on-windows-10
     $value = @'
-[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Keyboard Layout]
-"Scancode Map"=hex:00,00,00,00,00,00,00,00,02,00,00,00,1d,00,5b,e0,00,00,00,00
+[HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Keyboard Layout]
+"Scancode Map"=hex:00,00,00,00,00,00,00,00,03,00,00,00,5B,E0,3A,00,1D,00,5B,E0,00,00,00,00
 '@
     Import-RegSettings $value
 }
