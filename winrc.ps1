@@ -367,6 +367,7 @@ function Get-InstalledPackage {
 }
 
 function Get-InstalledProgram {
+    # TODO
     param (
         [string]$Name
     )
@@ -413,6 +414,7 @@ function Install-WingetApps {
 
 function Set-PowerToysSettings {
     <#
+    $ TODO
     C:\Users\tmslnz\AppData\Local\Microsoft\PowerToys\Keyboard Manager
     #>
 }
@@ -436,6 +438,7 @@ function Install-Pyenv {
     & "./install-pyenv-win.ps1"
     Remove-Item "./install-pyenv-win.ps1"
 }
+
 function Install-ScoopApps {
     if (-Not (Get-Command scoop -ErrorAction SilentlyContinue)) {
         Install-Scoop
@@ -658,6 +661,7 @@ function Set-LeftWindowsKeyToCtrl {
 }
 
 function Install-SyncthingService {
+    # TODO
     Write-Information -MessageData 'Create password for user Syncthing' -InformationAction Continue
     $Secure1 = Read-Host -AsSecureString
     Write-Information -MessageData 'Re-enter password to verify' -InformationAction Continue
