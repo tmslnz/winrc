@@ -474,7 +474,6 @@ function Install-WingetApps {
     Install-WingetApp -id 'AgileBits.1Password'
     Install-WingetApp -id 'Bitwarden.Bitwarden'
     Install-WingetApp -id 'OpenWhisperSystems.Signal'
-    Install-WingetApp -id 'VideoLAN.VLC'
     Install-WingetApp -id 'Microsoft.VisualStudioCode'
     Install-WingetApp -id 'SublimeHQ.SublimeMerge'
     Install-WingetApp -id 'SublimeHQ.SublimeText.4'
@@ -561,6 +560,7 @@ extras/gpu-z
 extras/handbrake
 extras/heidisql
 extras/inkscape
+extras/kdiff3
 extras/krita
 extras/logseq
 extras/losslesscut
@@ -576,8 +576,8 @@ extras/sqlitebrowser
 extras/sumatrapdf
 extras/synctrayzor
 extras/treesize-free
+extras/vlc
 extras/winaero-tweaker
-extras/windowsdesktop-runtime-lts
 extras/xnconvert
 extras/xnviewmp
 nirsoft/openedfilesview
