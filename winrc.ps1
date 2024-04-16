@@ -25,77 +25,79 @@ Set-ConfigGit
     }
 }
 
-function Set-AllowSymlinks {
+function Get-Username {
+    if ($env:userdomain -AND $env:username) {
+        $me = "$($env:username)"
+    }
+    elseif ($env:LOGNAME) {
+        $me = $env:LOGNAME
+    }
+    else {
+        $me = "[?]"
+    }
+    "$me"
+}
+
+function Test-IsAdmin {
+    if (-Not (Test-IsWindows)) {
+        if ($(id -g) -eq 0 ) { return $true }
+        else { return $false }
+    }
+    if ((Test-IsWindows) -or $psEdition -eq 'desktop') {
+        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+        $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+        $adminRole = [Security.Principal.WindowsBuiltInRole]::Administrator
+        if (($principal.IsInRole($adminRole))) { return $true }
+        else { return $false }
+    }
+    $false
+}
+
+function Test-IsDebug {
+    Test-Path variable:/PSDebugContext
+}
+
+function Test-IsWindows {
+    if ($Env:OS) { return $true }
+    if (-Not $Env:OS) { return $false }
+}
+
+function New-Symlink {
+    try {
+        New-Item -ItemType 'SymbolicLink' @args -ErrorAction Stop
+    }
+    catch {
+        sudo { New-Item -ItemType 'SymbolicLink' @args } -args @($args)
+    }
+}
+
+function New-TemporaryDirectory {
     <#
     .SYNOPSIS
-    https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/secedit-configure
+    https://stackoverflow.com/a/34559554
     #>
-    sudo {
-        secedit /export /cfg c:\secpol.cfg
-        (Get-Content C:\secpol.cfg).replace('SeCreateSymbolicLinkPrivilege = ', 'SeCreateSymbolicLinkPrivilege = " + Environment.UserName + ",') | Out-File C:\secpol.cfg
-        secedit /configure /db c:\windows\security\local.sdb /cfg c:\secpol.cfg /areas SECURITYPOLICY
-        Remove-Item -Force -Path c:\secpol.cfg -Confirm:$false
+    $parent = [System.IO.Path]::GetTempPath()
+    [string] $name = [System.Guid]::NewGuid()
+    New-Item -ItemType Directory -Path (Join-Path $parent $name)
+}
+
+function Import-RegSettings {
+    param (
+        [Parameter(Mandatory=$true, Position=0, ParameterSetName = "Value")]
+        [ValidateNotNullOrEmpty()]
+        [string]$Value
+    )
+    if (-Not (Test-IsWindows)) { return }
+    if (-Not (Get-Command sudo -ErrorAction SilentlyContinue)) {
+        Write-Warning -Message 'Please install gsudo first. Aborting.'
+        return
     }
-}
-
-function Install-PowerShellProfile {
-    if ([IO.File]::Exists($PROFILE)) {
-        if (! (Select-String -Path $PROFILE -Pattern "BEGIN_SHELLRC" -ErrorAction SilentlyContinue)) {
-            $dirname = ([IO.FileInfo]$PROFILE).DirectoryName
-            $basename = ([IO.FileInfo]$PROFILE).BaseName
-            $ext = ([IO.FileInfo]$PROFILE).Extension
-            $ts = Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
-            $dest = Join-Path -Path $dirname -ChildPath "${basename}_backup_${ts}${ext}"
-            Copy-Item -Path $PROFILE -Destination $dest
-        }
-    }
-    if (! [IO.File]::Exists($PROFILE)) {
-        New-Item -ItemType File -Path $PROFILE -Force
-    }
-    $Value = Join-Path -Path "$PSScriptRoot" -ChildPath 'winrc.ps1'
-    $Content = @"
-# BEGIN_SHELLRC
-. '$Value'
-# END_SHELLRC
-"@
-    New-ConfigSection -String $Content -Path $PROFILE
-    Update-ConfigSection -String $Content -Path $PROFILE
-}
-
-function Set-ConfigRhinoceros {
-    <#
-    # TODO
-    $hosts = [Environment]::SystemDirectory + '\drivers\etc\hosts'
-    #>
-}
-
-function Set-ConfigShareX {
-    # TODO
-    <#
-    $a = Get-Content 'D:\temp\mytest.json' -raw | ConvertFrom-Json
-    $a.update | % {if($_.name -eq 'test1'){$_.version=3.0}}
-    $a | ConvertTo-Json -depth 32| set-content 'D:\temp\mytestBis.json'
-    #>
-}
-
-function Set-ConfigCyberduck {
-    <#
-    TODO
-    C:\Users\tmslnz\AppData\Roaming\Cyberduck\Cyberduck.user.config
-
-    <setting name="update.check" value="false" />
-    <setting name="queue.window.open.default" value="false" />
-    <setting name="editor.alwaysusedefault" value="true" />
-    <setting name="editor.bundleidentifier" value="c:\program files\sublime text\sublime_text.exe" />
-    <setting name="browser.doubleclick.edit" value="true" />
-    <setting name="browser.enterkey.rename" value="true" />
-    <setting name="browser.move.confirm" value="false" />
-    <setting name="bookmark.toggle.options" value="true" />
-    #>
-    $xml = New-Object XML
-    $xml.Load("$Home\AppData\Roaming\Cyberduck\Cyberduck.user.config")
-    $nodes = $xml.SelectNodes('//setting[@name="CdSettings"]/value/settings/setting')
-    $nodes
+    $header = 'Windows Registry Editor Version 5.00'
+    $regString = ($header + "`n" + $Value) -replace "\r?\n", "`r`n"
+    $tempFile = "$env:TEMP\winrc.reg"
+    $regString | Out-File -FilePath "$tempFile" -Encoding unicode
+    sudo reg import "$tempFile"
+    Remove-Item -Path "$tempFile"
 }
 
 function New-ConfigSection {
@@ -140,38 +142,6 @@ function Update-ConfigSection {
     [IO.File]::WriteAllLines(($Path | Resolve-Path), $replaced)
 }
 
-function Get-Username {
-    if ($env:userdomain -AND $env:username) {
-        $me = "$($env:username)"
-    }
-    elseif ($env:LOGNAME) {
-        $me = $env:LOGNAME
-    }
-    else {
-        $me = "[?]"
-    }
-    "$me"
-}
-
-function Test-IsAdmin {
-    if (-Not (Test-IsWindows)) {
-        if ($(id -g) -eq 0 ) { return $true }
-        else { return $false }
-    }
-    if ((Test-IsWindows) -or $psEdition -eq 'desktop') {
-        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-        $principal = [Security.Principal.WindowsPrincipal]::new($identity)
-        $adminRole = [Security.Principal.WindowsBuiltInRole]::Administrator
-        if (($principal.IsInRole($adminRole))) { return $true }
-        else { return $false }
-    }
-    $false
-}
-
-function Test-IsDebug {
-    Test-Path variable:/PSDebugContext
-}
-
 function prompt {
     $prefix = $(
         if (Test-IsDebug) { '[DEBUG] ' }
@@ -185,11 +155,6 @@ function prompt {
     $body = "$($PSStyle.Bold)${user}@$($PSStyle.Dim)${hostname}:$($PSStyle.Reset)${cwd}"
     $suffix = $(if ($NestedPromptLevel -ge 1) { "$($PSStyle.Dim)$ $($PSStyle.Reset)" }) + "$($PSStyle.Dim)$([char]0x25CF)$($PSStyle.Reset) "
     "${prefix}${body} ${suffix}"
-}
-
-function Test-IsWindows {
-    if ($Env:OS) { return $true }
-    if (-Not $Env:OS) { return $false }
 }
 
 function Set-ConfigZoxide {
@@ -308,23 +273,154 @@ $RECYCLE.BIN/
     Update-ConfigSection -String $config -Path $file
 }
 
-function New-Symlink () {
-    try {
-        New-Item -ItemType 'SymbolicLink' @args -ErrorAction Stop
-    }
-    catch {
-        sudo { New-Item -ItemType 'SymbolicLink' @args } -args @($args)
-    }
+function Set-ConfigRhinoceros {
+    <#
+    # TODO
+    $hosts = [Environment]::SystemDirectory + '\drivers\etc\hosts'
+    #>
 }
 
-function New-TemporaryDirectory {
+function Set-ConfigShareX {
+    # TODO
     <#
-    .SYNOPSIS
-    https://stackoverflow.com/a/34559554
+    $a = Get-Content 'D:\temp\mytest.json' -raw | ConvertFrom-Json
+    $a.update | % {if($_.name -eq 'test1'){$_.version=3.0}}
+    $a | ConvertTo-Json -depth 32| set-content 'D:\temp\mytestBis.json'
     #>
-    $parent = [System.IO.Path]::GetTempPath()
-    [string] $name = [System.Guid]::NewGuid()
-    New-Item -ItemType Directory -Path (Join-Path $parent $name)
+}
+
+function Set-ConfigCyberduck {
+    <#
+    TODO
+    C:\Users\tmslnz\AppData\Roaming\Cyberduck\Cyberduck.user.config
+
+    <setting name="update.check" value="false" />
+    <setting name="queue.window.open.default" value="false" />
+    <setting name="editor.alwaysusedefault" value="true" />
+    <setting name="editor.bundleidentifier" value="c:\program files\sublime text\sublime_text.exe" />
+    <setting name="browser.doubleclick.edit" value="true" />
+    <setting name="browser.enterkey.rename" value="true" />
+    <setting name="browser.move.confirm" value="false" />
+    <setting name="bookmark.toggle.options" value="true" />
+    #>
+    $xml = New-Object XML
+    $xml.Load("$Home\AppData\Roaming\Cyberduck\Cyberduck.user.config")
+    $nodes = $xml.SelectNodes('//setting[@name="CdSettings"]/value/settings/setting')
+    $nodes
+}
+
+function Set-ConfigPowerToys {
+    <#
+    $ TODO
+    C:\Users\tmslnz\AppData\Local\Microsoft\PowerToys\Keyboard Manager
+    #>
+}
+
+function Set-ConfigExplorer {
+    # https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gppref/3c837e92-016e-4148-86e5-b4f0381a757f
+    $value = @'
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+
+; Show all file extensions
+"HideFileExt"=dword:00000000
+
+; Show hidden files
+"Hidden"=dword:00000002
+
+; Displays compressed and encrypted NTFS files in color
+"ShowCompColor"=dword:00000001
+
+; Do not change case of path elements
+"DontPrettyPath"=dword:00000001
+
+; Allow bottom-right hover to show Desktop
+"DisablePreviewDesktop"=dword:00000000
+
+;"AlwaysShowMenus"=dword:00000001
+;"AutoCheckSelect"=dword:00000000
+;"DontUsePowerShellOnWinX"=dword:00000000
+;"ExtendedUIHoverTime"=dword:00000190
+;"Filter"=dword:00000000
+;"HideIcons"=dword:00000000
+;"HideMergeConflicts"=dword:00000000
+;"IconsOnly"=dword:00000000
+;"LastActiveClick"=dword:00000001
+;"LaunchTo"=dword:00000001
+;"ListviewAlphaSelect"=dword:00000001
+;"ListviewShadow"=dword:00000001
+;"MapNetDrvBtn"=dword:00000000
+;"NavPaneExpandToCurrentFolder"=dword:00000000
+;"NavPaneShowAllFolders"=dword:00000001
+;"OnboardUnpinCortana"=dword:00000001
+;"ReindexedProfile"=dword:00000001
+;"SeparateProcess"=dword:00000000
+;"ServerAdminUI"=dword:00000000
+;"ShowCortanaButton"=dword:00000000
+;"ShowEncryptCompressedColor"=dword:00000001
+;"ShowInfoTip"=dword:00000001
+;"ShowStatusBar"=dword:00000001
+;"ShowSuperHidden"=dword:00000001
+;"ShowTaskViewButton"=dword:00000000
+;"ShowTypeOverlay"=dword:00000001
+;"Start_SearchFiles"=dword:00000002
+;"Start_TrackDocs"=dword:00000001
+;"Start_TrackProgs"=dword:00000000
+;"StartMenuInit"=dword:0000000d
+;"StartMigratedBrowserPin"=dword:00000001
+;"StoreAppsOnTaskbar"=dword:00000001
+;"TaskbarAnimations"=dword:00000001
+;"TaskbarAutoHideInTabletMode"=dword:00000000
+;"TaskbarBadges"=dword:00000001
+;"TaskbarGlomLevel"=dword:00000002
+;"TaskbarSizeMove"=dword:00000000
+;"TaskbarSmallIcons"=dword:00000000
+;"WebView"=dword:00000001
+'@
+    Import-RegSettings $value
+}
+
+function Set-ConfigWindows {
+   $value = @'
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock]
+"AllowDevelopmentWithoutDevLicense"=dword:00000001
+"AllowAllTrustedApps"=dword:00000001
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy]
+"TailoredExperiencesWithDiagnosticDataEnabled"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy]
+"HasAccepted"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo]
+"Enabled"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Internet Explorer\International]
+"AcceptLanguage"=-
+[HKEY_CURRENT_USER\Control Panel\International\User Profile]
+"HttpAcceptLanguageOptOut"=dword:00000001
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+"Start_TrackProgs"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager]
+"SubscribedContent-338393Enabled"=dword:00000000
+"SubscribedContent-353694Enabled"=dword:00000000
+"SubscribedContent-353696Enabled"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location]
+"Value"="Deny"
+
+'@
+    Import-RegSettings $value
+}
+
+function Set-ConfigKeyboard {
+    # https://superuser.com/questions/1264164/how-to-map-windows-key-to-ctrl-key-on-windows-10
+    $value = @'
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Keyboard Layout]
+"Scancode Map"=hex:00,00,00,00,00,00,00,00,02,00,00,00,1d,00,5b,e0,00,00,00,00
+'@
+    Import-RegSettings $value
 }
 
 function Disable-LogitechWebcamMicrophone {
@@ -332,79 +428,43 @@ function Disable-LogitechWebcamMicrophone {
     sudo Get-PnpDevice -Class AudioEndpoint -FriendlyName "*Logitech*" | Disable-PnpDevice -Confirm $false
 }
 
-function Get-AudioDevices {
-    Get-PnpDevice -Class AudioEndpoint
-}
-
-function Install-Winget {
-    <#
-    .SYNOPSIS
-    https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox
-    #>
-    if (!(Test-IsWindows)) { return }
-    $progressPreference = 'silentlyContinue'
-    $tmp_dir = New-TemporaryDirectory
-    Write-Information "Downloading WinGet and its dependencies..."
-    Invoke-WebRequest -Uri 'https://aka.ms/getwinget' -OutFile "${tmp_dir}\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-    Invoke-WebRequest -Uri 'https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx' -OutFile "${tmp_dir}\Microsoft.VCLibs.x64.14.00.Desktop.appx"
-    Invoke-WebRequest -Uri 'https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx' -OutFile "${tmp_dir}\Microsoft.UI.Xaml.2.8.x64.appx"
-    Add-AppxPackage "${tmp_dir}\Microsoft.VCLibs.x64.14.00.Desktop.appx"
-    Add-AppxPackage "${tmp_dir}\Microsoft.UI.Xaml.2.8.x64.appx"
-    Add-AppxPackage "${tmp_dir}\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-}
-
-function Get-InstalledAppxPackage {
-    param (
-        [string]$Name
-    )
-    if (! $Script:cached_AppxPackages) {
-        Write-Host "Caching Get-AppxPackage"
-        $Script:cached_AppxPackages = Get-AppxPackage | Select-Object -Property Name, Version
+function Install-PowerShellProfile {
+    if ([IO.File]::Exists($PROFILE)) {
+        if (! (Select-String -Path $PROFILE -Pattern "BEGIN_SHELLRC" -ErrorAction SilentlyContinue)) {
+            $dirname = ([IO.FileInfo]$PROFILE).DirectoryName
+            $basename = ([IO.FileInfo]$PROFILE).BaseName
+            $ext = ([IO.FileInfo]$PROFILE).Extension
+            $ts = Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
+            $dest = Join-Path -Path $dirname -ChildPath "${basename}_backup_${ts}${ext}"
+            Copy-Item -Path $PROFILE -Destination $dest
+        }
     }
-    $Script:cached_AppxPackages | Where-Object -Property Name -like $Name
-}
-
-function Get-InstalledPackage {
-    param (
-        [string]$Name
-    )
-    if (! $Script:cached_Packages) {
-        Write-Host "Caching Get-Package"
-        $Script:cached_Packages = Get-Package
+    if (! [IO.File]::Exists($PROFILE)) {
+        New-Item -ItemType File -Path $PROFILE -Force
     }
-    $Script:cached_Packages | Where-Object -Property Name -like $Name
-}
-
-function Get-InstalledProgram {
-    # TODO
-    param (
-        [string]$Name
-    )
-    if (! $Script:cached_Win32_Products) {
-        Get-InstalledApplications -GlobalAndCurrentUser |
-        Where-Object -Property DisplayName -like $Name  |
-        Select-Object -Property DisplayName
-        # Write-Host "Caching Get-WmiObject -Class Win32_Product"
-        # $Script:cached_Win32_Products = Get-WmiObject -Class Win32_Product
-        # $Script:cached_Win32_Products = Get-CimInstance -ClassName Win32_Program
-    }
-    # $Script:cached_Win32_Products | Where-Object -Property Name -like $Name
-}
-
-function Install-WingetApp {
-    param (
-        [string]$name,
-        [string]$id
-    )
-    if ($name) {
-        winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name $name
-    }
-    elseif ($id) {
-        winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id $id
-    }
+    $Value = Join-Path -Path "$PSScriptRoot" -ChildPath 'winrc.ps1'
+    $Content = @"
+# BEGIN_SHELLRC
+. '$Value'
+# END_SHELLRC
+"@
+    New-ConfigSection -String $Content -Path $PROFILE
+    Update-ConfigSection -String $Content -Path $PROFILE
 }
 
 function Install-WingetApps {
+    function Install-WingetApp {
+        param (
+            [string]$name,
+            [string]$id
+        )
+        if ($name) {
+            winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name $name
+        }
+        elseif ($id) {
+            winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id $id
+        }
+    }
     if (-Not (Test-IsWindows)) { return }
     Install-WingetApp -id 'Microsoft.PowerShell'
     Install-WingetApp -name 'HEIF Image Extensions'
@@ -419,21 +479,6 @@ function Install-WingetApps {
     Install-WingetApp -id 'SublimeHQ.SublimeMerge'
     Install-WingetApp -id 'SublimeHQ.SublimeText.4'
     Install-WingetApp -id 'Microsoft.PowerToys'
-}
-
-function Set-PowerToysSettings {
-    <#
-    $ TODO
-    C:\Users\tmslnz\AppData\Local\Microsoft\PowerToys\Keyboard Manager
-    #>
-}
-
-function Remove-Crap {
-    winget uninstall --name 'Windows Web Experience Pack'
-    winget uninstall --name 'Microsoft To Do'
-    winget uninstall --name 'Microsoft Sticky Notes'
-    winget uninstall --name 'Cortana'
-    winget uninstall --name 'Feedback Hub'
 }
 
 function Install-Scoop {
@@ -543,132 +588,6 @@ nonportable/zadig-np
     scoop install @list
 }
 
-function Import-RegSettings {
-    param (
-        [Parameter(Mandatory=$true, Position=0, ParameterSetName = "Value")]
-        [ValidateNotNullOrEmpty()]
-        [string]$Value
-    )
-    if (-Not (Test-IsWindows)) { return }
-    if (-Not (Get-Command sudo -ErrorAction SilentlyContinue)) {
-        Write-Warning -Message 'Please install gsudo first. Aborting.'
-        return
-    }
-    $header = 'Windows Registry Editor Version 5.00'
-    $regString = ($header + "`n" + $Value) -replace "\r?\n", "`r`n"
-    $tempFile = "$env:TEMP\winrc.reg"
-    $regString | Out-File -FilePath "$tempFile" -Encoding unicode
-    sudo reg import "$tempFile"
-    Remove-Item -Path "$tempFile"
-}
-
-function Set-ExplorerOptions {
-    # https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gppref/3c837e92-016e-4148-86e5-b4f0381a757f
-    $value = @'
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-
-; Show all file extensions
-"HideFileExt"=dword:00000000
-
-; Show hidden files
-"Hidden"=dword:00000002
-
-; Displays compressed and encrypted NTFS files in color
-"ShowCompColor"=dword:00000001
-
-; Do not change case of path elements
-"DontPrettyPath"=dword:00000001
-
-; Allow bottom-right hover to show Desktop
-"DisablePreviewDesktop"=dword:00000000
-
-;"AlwaysShowMenus"=dword:00000001
-;"AutoCheckSelect"=dword:00000000
-;"DontUsePowerShellOnWinX"=dword:00000000
-;"ExtendedUIHoverTime"=dword:00000190
-;"Filter"=dword:00000000
-;"HideIcons"=dword:00000000
-;"HideMergeConflicts"=dword:00000000
-;"IconsOnly"=dword:00000000
-;"LastActiveClick"=dword:00000001
-;"LaunchTo"=dword:00000001
-;"ListviewAlphaSelect"=dword:00000001
-;"ListviewShadow"=dword:00000001
-;"MapNetDrvBtn"=dword:00000000
-;"NavPaneExpandToCurrentFolder"=dword:00000000
-;"NavPaneShowAllFolders"=dword:00000001
-;"OnboardUnpinCortana"=dword:00000001
-;"ReindexedProfile"=dword:00000001
-;"SeparateProcess"=dword:00000000
-;"ServerAdminUI"=dword:00000000
-;"ShowCortanaButton"=dword:00000000
-;"ShowEncryptCompressedColor"=dword:00000001
-;"ShowInfoTip"=dword:00000001
-;"ShowStatusBar"=dword:00000001
-;"ShowSuperHidden"=dword:00000001
-;"ShowTaskViewButton"=dword:00000000
-;"ShowTypeOverlay"=dword:00000001
-;"Start_SearchFiles"=dword:00000002
-;"Start_TrackDocs"=dword:00000001
-;"Start_TrackProgs"=dword:00000000
-;"StartMenuInit"=dword:0000000d
-;"StartMigratedBrowserPin"=dword:00000001
-;"StoreAppsOnTaskbar"=dword:00000001
-;"TaskbarAnimations"=dword:00000001
-;"TaskbarAutoHideInTabletMode"=dword:00000000
-;"TaskbarBadges"=dword:00000001
-;"TaskbarGlomLevel"=dword:00000002
-;"TaskbarSizeMove"=dword:00000000
-;"TaskbarSmallIcons"=dword:00000000
-;"WebView"=dword:00000001
-'@
-    Import-RegSettings $value
-}
-
-function Set-WindowsOptions {
-   $value = @'
-[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock]
-"AllowDevelopmentWithoutDevLicense"=dword:00000001
-"AllowAllTrustedApps"=dword:00000001
-
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy]
-"TailoredExperiencesWithDiagnosticDataEnabled"=dword:00000000
-
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy]
-"HasAccepted"=dword:00000000
-
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo]
-"Enabled"=dword:00000000
-
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Internet Explorer\International]
-"AcceptLanguage"=-
-[HKEY_CURRENT_USER\Control Panel\International\User Profile]
-"HttpAcceptLanguageOptOut"=dword:00000001
-
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-"Start_TrackProgs"=dword:00000000
-
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager]
-"SubscribedContent-338393Enabled"=dword:00000000
-"SubscribedContent-353694Enabled"=dword:00000000
-"SubscribedContent-353696Enabled"=dword:00000000
-
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location]
-"Value"="Deny"
-
-'@
-    Import-RegSettings $value
-}
-
-function Set-LeftWindowsKeyToCtrl {
-    # https://superuser.com/questions/1264164/how-to-map-windows-key-to-ctrl-key-on-windows-10
-    $value = @'
-[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Keyboard Layout]
-"Scancode Map"=hex:00,00,00,00,00,00,00,00,02,00,00,00,1d,00,5b,e0,00,00,00,00
-'@
-    Import-RegSettings $value
-}
-
 function Install-SyncthingService {
     # TODO
     Write-Information -MessageData 'Create password for user Syncthing' -InformationAction Continue
@@ -693,6 +612,73 @@ function Install-SyncthingService {
     # sudo {
     #     nssm.exe install 'Syncthing' 'C:\Program Files\Syncthing\syncthing.exe'
     # }
+}
+
+function Install-Winget {
+    <#
+    .SYNOPSIS
+    https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox
+    #>
+    if (!(Test-IsWindows)) { return }
+    $progressPreference = 'silentlyContinue'
+    $tmp_dir = New-TemporaryDirectory
+    Write-Information "Downloading WinGet and its dependencies..."
+    Invoke-WebRequest -Uri 'https://aka.ms/getwinget' -OutFile "${tmp_dir}\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+    Invoke-WebRequest -Uri 'https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx' -OutFile "${tmp_dir}\Microsoft.VCLibs.x64.14.00.Desktop.appx"
+    Invoke-WebRequest -Uri 'https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx' -OutFile "${tmp_dir}\Microsoft.UI.Xaml.2.8.x64.appx"
+    Add-AppxPackage "${tmp_dir}\Microsoft.VCLibs.x64.14.00.Desktop.appx"
+    Add-AppxPackage "${tmp_dir}\Microsoft.UI.Xaml.2.8.x64.appx"
+    Add-AppxPackage "${tmp_dir}\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+}
+
+function Uninstall-Crap {
+    winget uninstall --name 'Windows Web Experience Pack'
+    winget uninstall --name 'Microsoft To Do'
+    winget uninstall --name 'Microsoft Sticky Notes'
+    winget uninstall --name 'Cortana'
+    winget uninstall --name 'Feedback Hub'
+}
+
+function Get-AudioDevices {
+    Get-PnpDevice -Class AudioEndpoint
+}
+
+function Get-InstalledAppxPackage {
+    param (
+        [string]$Name
+    )
+    if (! $Script:cached_AppxPackages) {
+        Write-Host "Caching Get-AppxPackage"
+        $Script:cached_AppxPackages = Get-AppxPackage | Select-Object -Property Name, Version
+    }
+    $Script:cached_AppxPackages | Where-Object -Property Name -like $Name
+}
+
+function Get-InstalledPackage {
+    param (
+        [string]$Name
+    )
+    if (! $Script:cached_Packages) {
+        Write-Host "Caching Get-Package"
+        $Script:cached_Packages = Get-Package
+    }
+    $Script:cached_Packages | Where-Object -Property Name -like $Name
+}
+
+function Get-InstalledProgram {
+    # TODO
+    param (
+        [string]$Name
+    )
+    if (! $Script:cached_Win32_Products) {
+        Get-InstalledApplications -GlobalAndCurrentUser |
+        Where-Object -Property DisplayName -like $Name  |
+        Select-Object -Property DisplayName
+        # Write-Host "Caching Get-WmiObject -Class Win32_Product"
+        # $Script:cached_Win32_Products = Get-WmiObject -Class Win32_Product
+        # $Script:cached_Win32_Products = Get-CimInstance -ClassName Win32_Program
+    }
+    # $Script:cached_Win32_Products | Where-Object -Property Name -like $Name
 }
 
 function Get-InstalledApplications() {
