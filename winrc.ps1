@@ -408,6 +408,21 @@ function Install-WingetApps {
     Install-WingetApp -id 'Microsoft.VisualStudioCode'
     Install-WingetApp -id 'SublimeHQ.SublimeMerge'
     Install-WingetApp -id 'SublimeHQ.SublimeText.4'
+    Install-WingetApp -id 'Microsoft.PowerToys'
+}
+
+function Set-PowerToysSettings {
+    <#
+    C:\Users\tmslnz\AppData\Local\Microsoft\PowerToys\Keyboard Manager
+    #>
+}
+
+function Remove-Crap {
+    winget uninstall --name 'Windows Web Experience Pack'
+    winget uninstall --name 'Microsoft To Do'
+    winget uninstall --name 'Microsoft Sticky Notes'
+    winget uninstall --name 'Cortana'
+    winget uninstall --name 'Feedback Hub'
 }
 
 function Install-Scoop {
