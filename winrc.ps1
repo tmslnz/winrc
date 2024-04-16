@@ -5,7 +5,7 @@ $QUIET = $true
 
 function Main {
     $actions = @'
-Install-Profile
+Install-PowerShellProfile
 Set-ConfigNpm
 Set-ConfigZoxide
 Set-ConfigGit
@@ -38,7 +38,7 @@ function Set-AllowSymlinks {
     }
 }
 
-function Install-Profile {
+function Install-PowerShellProfile {
     if ([IO.File]::Exists($PROFILE)) {
         if (! (Select-String -Path $PROFILE -Pattern "BEGIN_SHELLRC" -ErrorAction SilentlyContinue)) {
             $dirname = ([IO.FileInfo]$PROFILE).DirectoryName
