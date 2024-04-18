@@ -478,6 +478,7 @@ function Install-WingetApps {
     Install-WingetApp -id 'SublimeHQ.SublimeMerge'
     Install-WingetApp -id 'SublimeHQ.SublimeText.4'
     Install-WingetApp -id 'Microsoft.PowerToys'
+    Install-WingetApp -id 'Mozilla.Firefox'
 }
 
 function Install-Scoop {
