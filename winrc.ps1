@@ -552,6 +552,7 @@ extras/blender
 extras/bulk-crap-uninstaller
 extras/cpu-z
 extras/cyberduck
+extras/dbeaver
 extras/dupeguru
 extras/everything
 extras/f3d
