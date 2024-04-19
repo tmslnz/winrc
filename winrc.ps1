@@ -574,7 +574,7 @@ extras/renamer
 extras/sharex
 extras/sharpkeys
 extras/simplenote
-extras/sqlitebrowser
+extras/sqlitestudio
 extras/sumatrapdf
 extras/synctrayzor
 extras/treesize-free
