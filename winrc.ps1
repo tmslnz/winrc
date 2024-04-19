@@ -280,6 +280,24 @@ function Set-ConfigRhinoceros {
     #>
 }
 
+function Set-ConfigWSL1 {
+    <#
+    # TODO
+    #>
+}
+
+function Set-ConfigWSL2 {
+    <#
+    # TODO
+    #>
+}
+
+function Set-ConfigSSH {
+    <#
+    # TODO
+    #>
+}
+
 function Set-ConfigShareX {
     # TODO
     <#
@@ -479,12 +497,26 @@ function Install-WingetApps {
     Install-WingetApp -id 'SublimeHQ.SublimeText.4'
     Install-WingetApp -id 'Microsoft.PowerToys'
     Install-WingetApp -id 'Mozilla.Firefox'
+    Install-WingetApp -id 'Brave.Brave'
+    Install-WingetApp -id 'Figma.Figma'
+    Install-WingetApp -id 'NextDNS.NextDNS.Desktop'
+    Install-WingetApp -id 'SlackTechnologies.Slack'
+    Install-WingetApp -id 'Splashtop.SplashtopBusiness'
 }
 
 function Install-Scoop {
     if (-Not (Test-IsWindows)) { return }
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
     Invoke-RestMethod -Uri 'https://get.scoop.sh' | Invoke-Expression
+    # Core
+    $list = @'
+git
+aria2
+7zip
+scoop-search
+gsudo
+'@ -Split "`r?`n"
+    scoop install @list
 }
 
 function Install-Pyenv {
@@ -497,15 +529,6 @@ function Install-ScoopApps {
     if (-Not (Get-Command scoop -ErrorAction SilentlyContinue)) {
         Install-Scoop
     }
-
-    # Core
-    $list = @'
-git
-aria2
-scoop-search
-gsudo
-'@ -Split "`r?`n"
-    scoop install @list
 
     # Buckets
     scoop bucket add extras
@@ -543,7 +566,6 @@ zoxide
 
     # GUI
 $list = @'
-7zip
 cygwin
 extras/advanced-ip-scanner
 extras/audacity
@@ -631,6 +653,14 @@ function Install-Winget {
     Add-AppxPackage "${tmp_dir}\Microsoft.VCLibs.x64.14.00.Desktop.appx"
     Add-AppxPackage "${tmp_dir}\Microsoft.UI.Xaml.2.8.x64.appx"
     Add-AppxPackage "${tmp_dir}\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+}
+
+function Install-WindowsSandbox {
+    <#
+    # TODO
+    https://learn.microsoft.com/en-us/windows/security/application-security/application-isolation/windows-sandbox/windows-sandbox-configure-using-wsb-file#networking
+    #>
+    Enable-WindowsOptionalFeature -FeatureName "Containers-DisposableClientVM" -All -Online
 }
 
 function Uninstall-Crap {
