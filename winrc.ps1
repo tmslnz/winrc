@@ -67,7 +67,7 @@ function New-Symlink {
         New-Item -ItemType 'SymbolicLink' @args -ErrorAction Stop
     }
     catch {
-        sudo { New-Item -ItemType 'SymbolicLink' @args } -args @($args)
+        gsudo { New-Item -ItemType 'SymbolicLink' @args } -args @($args)
     }
 }
 
@@ -83,12 +83,12 @@ function New-TemporaryDirectory {
 
 function Import-RegSettings {
     param (
-        [Parameter(Mandatory=$true, Position=0, ParameterSetName = "Value")]
+        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = "Value")]
         [ValidateNotNullOrEmpty()]
         [string]$Value
     )
     if (-Not (Test-IsWindows)) { return }
-    if (-Not (Get-Command sudo -ErrorAction SilentlyContinue)) {
+    if (-Not (Get-Command gsudo -ErrorAction SilentlyContinue)) {
         Write-Warning -Message 'Please install gsudo first. Aborting.'
         return
     }
@@ -96,7 +96,12 @@ function Import-RegSettings {
     $regString = ($header + "`n" + $Value) -replace "\r?\n", "`r`n"
     $tempFile = "$env:TEMP\winrc.reg"
     $regString | Out-File -FilePath "$tempFile" -Encoding unicode
-    sudo reg import "$tempFile"
+    try {
+        reg import "$tempFile"
+    }
+    catch {
+        gsudo reg import "$tempFile"
+    }
     Remove-Item -Path "$tempFile"
 }
 
@@ -398,7 +403,10 @@ function Set-ConfigExplorer {
 }
 
 function Set-ConfigWindows {
-   $value = @'
+    <#
+    https://howtomanagedevices.com/windows-10/3654/how-to-disable-privacy-settings-experience-at-first-sign-in-in-windows-10/
+    #>
+    $value = @'
 [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock]
 "AllowDevelopmentWithoutDevLicense"=dword:00000001
 "AllowAllTrustedApps"=dword:00000001
@@ -443,7 +451,7 @@ function Set-ConfigKeyboard {
 
 function Disable-LogitechWebcamMicrophone {
     if (!(Test-IsWindows)) { return }
-    sudo Get-PnpDevice -Class AudioEndpoint -FriendlyName "*Logitech*" | Disable-PnpDevice -Confirm $false
+    gsudo Get-PnpDevice -Class AudioEndpoint -FriendlyName "*Logitech*" | Disable-PnpDevice -Confirm $false
 }
 
 function Install-PowerShellProfile {
@@ -565,7 +573,7 @@ zoxide
     scoop install @list
 
     # GUI
-$list = @'
+    $list = @'
 cygwin
 extras/advanced-ip-scanner
 extras/audacity
@@ -614,7 +622,15 @@ nonportable/zadig-np
 
 function Install-SyncthingService {
     # TODO
-    Write-Information -MessageData 'Create password for user Syncthing' -InformationAction Continue
+    $account = 'mario'
+    $servicename = 'mario'
+    if (Get-Service "$servicename" -ErrorAction SilentlyContinue) {
+        Write-Information -MessageData "Service $servicename exists" -InformationAction Continue
+        return
+    }
+    # Get password
+    Write-Information -MessageData "Creating local user: $account" -InformationAction Continue
+    Write-Information -MessageData "Create password for user: $account" -InformationAction Continue
     $Secure1 = Read-Host -AsSecureString
     Write-Information -MessageData 'Re-enter password to verify' -InformationAction Continue
     $Secure2 = Read-Host -AsSecureString
@@ -625,17 +641,87 @@ function Install-SyncthingService {
     $pwd2_text = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secure2))
     if ($pwd1_text -ne $pwd2_text) {
         Write-Warning -Message 'Passwords did not match. Try again.' -WarningAction Continue
-        Install-SyncthingService
         return
     }
-    sudo {
-        New-LocalUser -AccountNeverExpires -Name 'Syncthing' -PasswordNeverExpires -UserMayNotChangePassword -Password $Secure1
-        sudo winget install --id NSSM.NSSM --scope machine
+    Invoke-gsudo -ArgumentList $account, $servicename, $Secure1, $pwd2_text -ScriptBlock {
+        $account = $args[0]
+        $servicename = $args[1]
+        $Secure1 = $args[2]
+        $pwd2_text = $args[3]
+        Write-Host $account
+        Write-Host $servicename
+        Write-Host $Secure1
+        Write-Host $pwd2_text
+        # Start
+        New-LocalUser -Name "$account" -Password $Secure1 -UserMayNotChangePassword -ErrorAction SilentlyContinue
+        Add-LocalGroupMember -Group "Users" -Member "$account" -ErrorAction SilentlyContinue
+        Get-LocalUser -Name "$account" | Set-LocalUser -Password $Secure1
+        $Credential = [PSCredential]::New($account, $Secure1)
+        Start-Process "cmd.exe" -Credential $Credential -ArgumentList "/C" -LoadUserProfile
+        New-Item -ItemType Directory "C:\Users\$account\AppData\Local\Syncthing\Logs" -Force
+        $Acl = Get-Acl -Path "C:\Users\$account\AppData\Local\Syncthing"
+        $Owner = New-Object System.Security.Principal.NTAccount("$account")
+        $Acl.SetOwner($Owner)
+        Set-Acl "C:\Users\$account\AppData\Local\Syncthing" $Acl
+        # {
+        #     winget install --id 'NSSM.NSSM' --scope machine
+        #     winget install --id 'Syncthing.Syncthing' --scope machine
+        # }
+        # Fix permissions
+        # {
+        #     $symlink = Get-Item "C:\Program Files\WinGet\Links\syncthing.exe"
+        #     $symlinkDir = Split-Path $symlink.Target -parent | Split-Path -parent
+        #     $Acl = Get-Acl $symlinkDir
+        #     $arguments = $account, "ReadAndExecute", "ContainerInherit, ObjectInherit", "None", "Allow"
+        #     $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule $arguments
+        #     $acl.SetAccessRule($accessRule)
+        #     Set-Acl -Path $symlinkDir -AclObject $Acl
+        #     $symlink = Get-Item "C:\Program Files\WinGet\Links\nssm.exe"
+        #     $symlinkDir = Split-Path $symlink.Target -parent | Split-Path -parent
+        #     $Acl = Get-Acl $symlinkDir
+        #     $arguments = $account, "ReadAndExecute", "ContainerInherit, ObjectInherit", "None", "Allow"
+        #     $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule $arguments
+        #     $acl.SetAccessRule($accessRule)
+        #     Set-Acl -Path $symlinkDir -AclObject $Acl
+        # }
+        scoop install -g nssm syncthing
+        $syncthing = scoop shim info syncthing --global | Select-Object -ExpandProperty Path
+        # Install Service
+        nssm install $servicename $syncthing
+        nssm set $servicename Start SERVICE_DELAYED_AUTO_START
+        nssm set $servicename AppDirectory C:\Users\$account\AppData\Local\Syncthing
+        nssm set $servicename AppParameters -no-browser -no-restart -home='"'C:\Users\$account\AppData\Local\Syncthing'"'
+        nssm set $servicename DisplayName $servicename
+        nssm set $servicename Description 'Syncthing service for all users'
+        # Log On
+        nssm set $servicename ObjectName ".\$account" "$pwd2_text"
+        # Process
+        nssm set $servicename AppPriority NORMAL_PRIORITY_CLASS
+        nssm set $servicename AppNoConsole 0
+        nssm set $servicename AppAffinity All
+        # Shutdown
+        nssm set $servicename AppStopMethodSkip 0
+        nssm set $servicename AppStopMethodConsole 10000
+        nssm set $servicename AppStopMethodWindow 10000
+        nssm set $servicename AppStopMethodThreads 10000
+        # Exit
+        nssm set $servicename AppThrottle 5000
+        nssm set $servicename AppExit Default Exit
+        nssm set $servicename AppExit 0 Exit
+        nssm set $servicename AppExit 3 Restart
+        nssm set $servicename AppExit 4 Restart
+        nssm set $servicename AppRestartDelay 0
+        # I/O
+        nssm set $servicename AppStdout C:\Users\$account\AppData\Local\Syncthing\Logs\Syncthing.log
+        nssm set $servicename AppStderr C:\Users\$account\AppData\Local\Syncthing\Logs\Syncthing.log
     }
-
-    # sudo {
-    #     nssm.exe install 'Syncthing' 'C:\Program Files\Syncthing\syncthing.exe'
-    # }
+    #>
+    # Remove user from Login options
+    $value = @"
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList]
+"${account}"=dword:00000000
+"@
+    # Import-RegSettings $value
 }
 
 function Install-Winget {
