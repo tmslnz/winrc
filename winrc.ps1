@@ -362,6 +362,9 @@ function Set-ConfigExplorer {
 ; Allow bottom-right hover to show Desktop
 "DisablePreviewDesktop"=dword:00000000
 
+; Group when full
+"TaskbarGlomLevel"=dword:00000001
+
 ;"AlwaysShowMenus"=dword:00000001
 ;"AutoCheckSelect"=dword:00000000
 ;"DontUsePowerShellOnWinX"=dword:00000000
@@ -397,7 +400,6 @@ function Set-ConfigExplorer {
 ;"TaskbarAnimations"=dword:00000001
 ;"TaskbarAutoHideInTabletMode"=dword:00000000
 ;"TaskbarBadges"=dword:00000001
-;"TaskbarGlomLevel"=dword:00000002
 ;"TaskbarSizeMove"=dword:00000000
 ;"TaskbarSmallIcons"=dword:00000000
 ;"WebView"=dword:00000001
