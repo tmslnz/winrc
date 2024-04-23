@@ -720,13 +720,12 @@ function Install-SyncthingService {
         nssm set $servicename AppStdout C:\Users\$account\AppData\Local\Syncthing\Logs\Syncthing.log
         nssm set $servicename AppStderr C:\Users\$account\AppData\Local\Syncthing\Logs\Syncthing.log
     }
-    #>
     # Remove user from Login options
     $value = @"
 [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList]
 "${account}"=dword:00000000
 "@
-    # Import-RegSettings $value
+    Import-RegSettings $value
 }
 
 function Install-Winget {
