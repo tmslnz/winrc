@@ -340,6 +340,9 @@ function Set-ConfigPowerToys {
 }
 
 function Set-ConfigExplorer {
+    # Make AppData folder visible
+    $appData = Split-Path $env:APPDATA -Parent
+    Set-ItemProperty -Path $appData -Name Attributes -Value Normal
     # https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gppref/3c837e92-016e-4148-86e5-b4f0381a757f
     $value = @'
 [HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
