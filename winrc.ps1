@@ -47,8 +47,7 @@ function Test-IsAdmin {
         $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
         $principal = [Security.Principal.WindowsPrincipal]::new($identity)
         $adminRole = [Security.Principal.WindowsBuiltInRole]::Administrator
-        if (($principal.IsInRole($adminRole))) { return $true }
-        else { return $false }
+        return $principal.IsInRole($adminRole)
     }
     $false
 }
@@ -827,8 +826,7 @@ function Get-InstalledApplications() {
     }
     # Check if running with Administrative privileges if required
     if ($GlobalAndAllUsers -or $AllUsers) {
-        $RunningAsAdmin = (New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-        if ($RunningAsAdmin -eq $false) {
+        if ((Test-IsAdmin) -eq $false) {
             Write-Error "Finding all user applications requires administrative privileges"
             break
         }
