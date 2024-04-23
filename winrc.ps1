@@ -622,8 +622,8 @@ nonportable/zadig-np
 
 function Install-SyncthingService {
     # TODO
-    $account = 'mario'
-    $servicename = 'mario'
+    $account = 'syncthing'
+    $servicename = 'syncthing'
     if (Get-Service "$servicename" -ErrorAction SilentlyContinue) {
         Write-Information -MessageData "Service $servicename exists" -InformationAction Continue
         return
