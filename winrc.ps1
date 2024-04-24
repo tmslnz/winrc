@@ -517,6 +517,11 @@ function Install-PowerShellProfile {
     Update-ConfigSection -String $Content -Path $PROFILE
 }
 
+function Install-CoreApps {
+    Install-Scoop
+    
+}
+
 function Install-WingetApp {
     param (
         [string]$name
@@ -526,24 +531,24 @@ function Install-WingetApp {
 
 function Install-WingetApps {
     if (-Not (Test-IsWindows)) { return }
-    Install-WingetApp -id 'Microsoft.PowerShell'
-    Install-WingetApp -name 'HEIF Image Extensions'
-    Install-WingetApp -name 'Webp Image Extensions'
-    Install-WingetApp -name 'VP9 Video Extensions'
-    Install-WingetApp -name 'Web Media Extensions'
-    Install-WingetApp -id 'AgileBits.1Password'
-    Install-WingetApp -id 'Bitwarden.Bitwarden'
-    Install-WingetApp -id 'OpenWhisperSystems.Signal'
-    Install-WingetApp -id 'Microsoft.VisualStudioCode'
-    Install-WingetApp -id 'SublimeHQ.SublimeMerge'
-    Install-WingetApp -id 'SublimeHQ.SublimeText.4'
-    Install-WingetApp -id 'Microsoft.PowerToys'
-    Install-WingetApp -id 'Mozilla.Firefox'
-    Install-WingetApp -id 'Brave.Brave'
-    Install-WingetApp -id 'Figma.Figma'
-    Install-WingetApp -id 'NextDNS.NextDNS.Desktop'
-    Install-WingetApp -id 'SlackTechnologies.Slack'
-    Install-WingetApp -id 'Splashtop.SplashtopBusiness'
+    Install-WingetApp 'Microsoft.PowerShell'
+    Install-WingetApp 'HEIF Image Extensions'
+    Install-WingetApp 'Webp Image Extensions'
+    Install-WingetApp 'VP9 Video Extensions'
+    Install-WingetApp 'Web Media Extensions'
+    Install-WingetApp 'AgileBits.1Password'
+    Install-WingetApp 'Bitwarden.Bitwarden'
+    Install-WingetApp 'OpenWhisperSystems.Signal'
+    Install-WingetApp 'Microsoft.VisualStudioCode'
+    Install-WingetApp 'SublimeHQ.SublimeMerge'
+    Install-WingetApp 'SublimeHQ.SublimeText.4'
+    Install-WingetApp 'Microsoft.PowerToys'
+    Install-WingetApp 'Mozilla.Firefox'
+    Install-WingetApp 'Brave.Brave'
+    Install-WingetApp 'Figma.Figma'
+    Install-WingetApp 'NextDNS.NextDNS.Desktop'
+    Install-WingetApp 'SlackTechnologies.Slack'
+    Install-WingetApp 'Splashtop.SplashtopBusiness'
 }
 
 function Install-Scoop {
