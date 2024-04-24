@@ -814,7 +814,6 @@ function Get-InstalledApplications() {
     if ($NoCache -eq $true) {
         $Script:CachedAppsList = @()
     }
-    Write-Host $Script:CachedAppsList.length
     if ($Script:CachedAppsList.length -gt 0) {
         return Write-Output $Script:CachedAppsList
     }
