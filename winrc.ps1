@@ -83,6 +83,21 @@ function New-TemporaryDirectory {
     New-Item -ItemType Directory -Path (Join-Path $parent $name)
 }
 
+function Grant-ReadAccess {
+    param (
+        [Parameter(mandatory = $true)]
+        [string]$Account,
+        [Parameter(mandatory = $true)]
+        [string]$Path
+    )
+    $ErrorActionPreference = 'Stop'
+    $Acl = Get-Acl $Path
+    $arguments = $account, "ReadAndExecute", "ContainerInherit, ObjectInherit", "None", "Allow"
+    $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule $arguments
+    $acl.SetAccessRule($accessRule)
+    Set-Acl -Path $Path -AclObject $Acl
+}
+
 function Import-RegSettings {
     param (
         [Parameter(Mandatory = $true, Position = 0, ParameterSetName = "Value")]
@@ -589,11 +604,9 @@ extras/blender
 extras/bulk-crap-uninstaller
 extras/cpu-z
 extras/cyberduck
-extras/dbeaver
 extras/dupeguru
 extras/everything
 extras/f3d
-extras/freecommander
 extras/ghostwriter
 extras/gpu-z
 extras/handbrake
