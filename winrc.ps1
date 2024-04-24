@@ -1,7 +1,9 @@
-$cached_Packages
-$cached_AppxPackages
-$cached_Win32_Products
-$QUIET = $true
+Set-StrictMode -Version Latest
+$progressPreference = 'SilentlyContinue'
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+$CachedAppsList = @()
+$WINRC_QUIET = $false
 
 function Main {
     $actions = @'
@@ -11,11 +13,12 @@ Set-ConfigZoxide
 Set-ConfigGit
 '@
     $actions.Replace("`r`n", "`n").Split("`n") | ForEach-Object -Process {
-        if ($QUIET) {
+        if ($WINRC_QUIET) {
             $command = [Scriptblock]::Create("$_ > `$null")
         }
         else {
             $command = [Scriptblock]::Create("$_")
+            Write-Host $command
         }
         Invoke-Command -ScriptBlock $command
     }
@@ -764,50 +767,12 @@ function Get-AudioDevices {
     Get-PnpDevice -Class AudioEndpoint
 }
 
-function Get-InstalledAppxPackage {
-    param (
-        [string]$Name
-    )
-    if (! $Script:cached_AppxPackages) {
-        Write-Host "Caching Get-AppxPackage"
-        $Script:cached_AppxPackages = Get-AppxPackage | Select-Object -Property Name, Version
-    }
-    $Script:cached_AppxPackages | Where-Object -Property Name -like $Name
-}
-
-function Get-InstalledPackage {
-    param (
-        [string]$Name
-    )
-    if (! $Script:cached_Packages) {
-        Write-Host "Caching Get-Package"
-        $Script:cached_Packages = Get-Package
-    }
-    $Script:cached_Packages | Where-Object -Property Name -like $Name
-}
-
-function Get-InstalledProgram {
-    # TODO
-    param (
-        [string]$Name
-    )
-    if (! $Script:cached_Win32_Products) {
-        Get-InstalledApplications -GlobalAndCurrentUser |
-        Where-Object -Property DisplayName -like $Name  |
-        Select-Object -Property DisplayName
-        # Write-Host "Caching Get-WmiObject -Class Win32_Product"
-        # $Script:cached_Win32_Products = Get-WmiObject -Class Win32_Product
-        # $Script:cached_Win32_Products = Get-CimInstance -ClassName Win32_Program
-    }
-    # $Script:cached_Win32_Products | Where-Object -Property Name -like $Name
-}
-
 function Get-InstalledApplications() {
     <#
     .SYNOPSIS
     https://xkln.net/blog/please-stop-using-win32product-to-find-installed-software-alternatives-inside/
     #>
-    [cmdletbinding(DefaultParameterSetName = 'GlobalAndAllUsers')]
+    [cmdletbinding(DefaultParameterSetName = 'GlobalAndCurrentUser')]
     Param (
         [Parameter(ParameterSetName = "Global")]
         [switch]$Global,
@@ -818,11 +783,12 @@ function Get-InstalledApplications() {
         [Parameter(ParameterSetName = "CurrentUser")]
         [switch]$CurrentUser,
         [Parameter(ParameterSetName = "AllUsers")]
-        [switch]$AllUsers
+        [switch]$AllUsers,
+        [switch]$NoCache
     )
     # Excplicitly set default param to True if used to allow conditionals to work
-    if ($PSCmdlet.ParameterSetName -eq "GlobalAndAllUsers") {
-        $GlobalAndAllUsers = $true
+    if ($PSCmdlet.ParameterSetName -eq "GlobalAndCurrentUser") {
+        $GlobalAndCurrentUser = $true
     }
     # Check if running with Administrative privileges if required
     if ($GlobalAndAllUsers -or $AllUsers) {
@@ -832,19 +798,25 @@ function Get-InstalledApplications() {
         }
     }
     # Empty array to store applications
-    $Apps = @()
+    if ($NoCache -eq $true) {
+        $Script:CachedAppsList = @()
+    }
+    Write-Host $Script:CachedAppsList.length
+    if ($Script:CachedAppsList.length -gt 0) {
+        return Write-Output $Script:CachedAppsList
+    }
     $32BitPath = "SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"
     $64BitPath = "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*"
     # Retreive globally insatlled applications
     if ($Global -or $GlobalAndAllUsers -or $GlobalAndCurrentUser) {
         Write-Host "Processing global hive"
-        $Apps += Get-ItemProperty "HKLM:\$32BitPath"
-        $Apps += Get-ItemProperty "HKLM:\$64BitPath"
+        $Script:CachedAppsList += Get-ItemProperty "HKLM:\$32BitPath"
+        $Script:CachedAppsList += Get-ItemProperty "HKLM:\$64BitPath"
     }
     if ($CurrentUser -or $GlobalAndCurrentUser) {
         Write-Host "Processing current user hive"
-        $Apps += Get-ItemProperty "Registry::\HKEY_CURRENT_USER\$32BitPath"
-        $Apps += Get-ItemProperty "Registry::\HKEY_CURRENT_USER\$64BitPath"
+        $Script:CachedAppsList += Get-ItemProperty "Registry::\HKEY_CURRENT_USER\$32BitPath"
+        $Script:CachedAppsList += Get-ItemProperty "Registry::\HKEY_CURRENT_USER\$64BitPath"
     }
     if ($AllUsers -or $GlobalAndAllUsers) {
         Write-Host "Collecting hive data for all users"
@@ -853,8 +825,8 @@ function Get-InstalledApplications() {
         $UnmountedProfiles = $AllProfiles | Where-Object { $_.Loaded -eq $false }
         Write-Host "Processing mounted hives"
         $MountedProfiles | ForEach-Object {
-            $Apps += Get-ItemProperty -Path "Registry::\HKEY_USERS\$($_.SID)\$32BitPath"
-            $Apps += Get-ItemProperty -Path "Registry::\HKEY_USERS\$($_.SID)\$64BitPath"
+            $Script:CachedAppsList += Get-ItemProperty -Path "Registry::\HKEY_USERS\$($_.SID)\$32BitPath"
+            $Script:CachedAppsList += Get-ItemProperty -Path "Registry::\HKEY_USERS\$($_.SID)\$64BitPath"
         }
         Write-Host "Processing unmounted hives"
         $UnmountedProfiles | ForEach-Object {
@@ -862,8 +834,8 @@ function Get-InstalledApplications() {
             Write-Host " -> Mounting hive at $Hive"
             if (Test-Path $Hive) {
                 REG LOAD HKU\temp $Hive
-                $Apps += Get-ItemProperty -Path "Registry::\HKEY_USERS\temp\$32BitPath"
-                $Apps += Get-ItemProperty -Path "Registry::\HKEY_USERS\temp\$64BitPath"
+                $Script:CachedAppsList += Get-ItemProperty -Path "Registry::\HKEY_USERS\temp\$32BitPath"
+                $Script:CachedAppsList += Get-ItemProperty -Path "Registry::\HKEY_USERS\temp\$64BitPath"
                 # Run manual GC to allow hive to be unmounted
                 [GC]::Collect()
                 [GC]::WaitForPendingFinalizers()
@@ -874,7 +846,7 @@ function Get-InstalledApplications() {
             }
         }
     }
-    Write-Output $Apps
+    Write-Output $Script:CachedAppsList
 }
 
 Main
