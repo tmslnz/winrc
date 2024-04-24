@@ -814,7 +814,8 @@ function Get-InstalledApplications() {
         [switch]$CurrentUser,
         [Parameter(ParameterSetName = "AllUsers")]
         [switch]$AllUsers,
-        [switch]$NoCache
+        [switch]$NoCache,
+        [switch]$NamesOnly
     )
     # Excplicitly set default param to True if used to allow conditionals to work
     if ($PSCmdlet.ParameterSetName -eq "GlobalAndCurrentUser") {
@@ -873,7 +874,14 @@ function Get-InstalledApplications() {
             }
         }
     }
-    Write-Output $Script:CachedAppsList
+    if ($NamesOnly -eq $true) {
+        $Script:CachedAppsList | Where-Object {
+            $_.PSobject.Properties.Name -contains 'DisplayName'
+        } | Select-Object -Property 'DisplayName'
+    }
+    else {
+        Write-Output $Script:CachedAppsList
+    }
 }
 
 Main
