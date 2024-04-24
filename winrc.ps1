@@ -64,6 +64,19 @@ function Test-IsWindows {
     if (-Not $Env:OS) { return $false }
 }
 
+function Test-IsInstalled {
+    <#
+    TODO: split display name on:
+    - v[0-9]
+    - [0-9]
+    - \(
+    #>
+    param (
+        [string] $Name
+    )
+    $res = Get-InstalledApplications | Where-Object -DisplayName -Like "${Name}"    
+}
+
 function New-Symlink {
     try {
         New-Item -ItemType 'SymbolicLink' @args -ErrorAction Stop
