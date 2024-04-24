@@ -3,7 +3,7 @@ $progressPreference = 'SilentlyContinue'
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 $CachedAppsList = @()
-$WINRC_QUIET = $false
+$WINRC_QUIET = $true
 
 function Main {
     $actions = @'
