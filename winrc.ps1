@@ -78,7 +78,7 @@ function Test-IsInstalled {
     $res = Get-InstalledApplications | Where-Object {
         ($_.PSobject.Properties.Name -contains 'DisplayName') -and ($_.DisplayName -like "${Name}")
     }
-    $res -gt 0
+    $null -ne $res
 }
 
 function New-Symlink {
