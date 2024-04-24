@@ -1,4 +1,4 @@
-Set-StrictMode -Version Latest
+# Set-StrictMode -Version
 $progressPreference = 'SilentlyContinue'
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
@@ -517,19 +517,14 @@ function Install-PowerShellProfile {
     Update-ConfigSection -String $Content -Path $PROFILE
 }
 
+function Install-WingetApp {
+    param (
+        [string]$name
+    )
+    winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact $name
+}
+
 function Install-WingetApps {
-    function Install-WingetApp {
-        param (
-            [string]$name,
-            [string]$id
-        )
-        if ($name) {
-            winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --exact --name $name
-        }
-        elseif ($id) {
-            winget.exe install --silent --no-upgrade --accept-package-agreements --accept-source-agreements --id $id
-        }
-    }
     if (-Not (Test-IsWindows)) { return }
     Install-WingetApp -id 'Microsoft.PowerShell'
     Install-WingetApp -name 'HEIF Image Extensions'
