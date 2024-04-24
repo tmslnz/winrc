@@ -791,6 +791,7 @@ function Uninstall-Crap {
     winget uninstall --name 'Microsoft Sticky Notes'
     winget uninstall --name 'Cortana'
     winget uninstall --name 'Feedback Hub'
+    winget uninstall --name 'Microsoft OneDrive'
 }
 
 function Get-AudioDevices {
