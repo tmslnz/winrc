@@ -74,7 +74,11 @@ function Test-IsInstalled {
     param (
         [string] $Name
     )
-    $res = Get-InstalledApplications | Where-Object -DisplayName -Like "${Name}"    
+    # $res = Get-InstalledApplications | Where-Object -DisplayName -Like "${Name}" -ErrorAction SilentlyContinue
+    $res = Get-InstalledApplications | Where-Object {
+        ($_.PSobject.Properties.Name -contains 'DisplayName') -and ($_.DisplayName -like "${Name}")
+    }
+    $res -gt 0
 }
 
 function New-Symlink {
@@ -834,12 +838,10 @@ function Get-InstalledApplications() {
     $64BitPath = "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*"
     # Retreive globally insatlled applications
     if ($Global -or $GlobalAndAllUsers -or $GlobalAndCurrentUser) {
-        Write-Host "Processing global hive"
         $Script:CachedAppsList += Get-ItemProperty "HKLM:\$32BitPath"
         $Script:CachedAppsList += Get-ItemProperty "HKLM:\$64BitPath"
     }
     if ($CurrentUser -or $GlobalAndCurrentUser) {
-        Write-Host "Processing current user hive"
         $Script:CachedAppsList += Get-ItemProperty "Registry::\HKEY_CURRENT_USER\$32BitPath"
         $Script:CachedAppsList += Get-ItemProperty "Registry::\HKEY_CURRENT_USER\$64BitPath"
     }
