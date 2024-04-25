@@ -833,45 +833,44 @@ function Get-InstalledApplications() {
     if ($NoCache -eq $true) {
         $Script:CachedAppsList = @()
     }
-    if ($Script:CachedAppsList.length -gt 0) {
-        return Write-Output $Script:CachedAppsList
-    }
-    $32BitPath = "SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"
-    $64BitPath = "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*"
-    # Retreive globally insatlled applications
-    if ($Global -or $GlobalAndAllUsers -or $GlobalAndCurrentUser) {
-        $Script:CachedAppsList += Get-ItemProperty "HKLM:\$32BitPath"
-        $Script:CachedAppsList += Get-ItemProperty "HKLM:\$64BitPath"
-    }
-    if ($CurrentUser -or $GlobalAndCurrentUser) {
-        $Script:CachedAppsList += Get-ItemProperty "Registry::\HKEY_CURRENT_USER\$32BitPath"
-        $Script:CachedAppsList += Get-ItemProperty "Registry::\HKEY_CURRENT_USER\$64BitPath"
-    }
-    if ($AllUsers -or $GlobalAndAllUsers) {
-        Write-Host "Collecting hive data for all users"
-        $AllProfiles = Get-CimInstance Win32_UserProfile | Select-Object LocalPath, SID, Loaded, Special | Where-Object { $_.SID -like "S-1-5-21-*" }
-        $MountedProfiles = $AllProfiles | Where-Object { $_.Loaded -eq $true }
-        $UnmountedProfiles = $AllProfiles | Where-Object { $_.Loaded -eq $false }
-        Write-Host "Processing mounted hives"
-        $MountedProfiles | ForEach-Object {
-            $Script:CachedAppsList += Get-ItemProperty -Path "Registry::\HKEY_USERS\$($_.SID)\$32BitPath"
-            $Script:CachedAppsList += Get-ItemProperty -Path "Registry::\HKEY_USERS\$($_.SID)\$64BitPath"
+    if ($Script:CachedAppsList.length -eq 0) {
+        $32BitPath = "SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"
+        $64BitPath = "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*"
+        # Retreive globally insatlled applications
+        if ($Global -or $GlobalAndAllUsers -or $GlobalAndCurrentUser) {
+            $Script:CachedAppsList += Get-ItemProperty "HKLM:\$32BitPath"
+            $Script:CachedAppsList += Get-ItemProperty "HKLM:\$64BitPath"
         }
-        Write-Host "Processing unmounted hives"
-        $UnmountedProfiles | ForEach-Object {
-            $Hive = "$($_.LocalPath)\NTUSER.DAT"
-            Write-Host " -> Mounting hive at $Hive"
-            if (Test-Path $Hive) {
-                REG LOAD HKU\temp $Hive
-                $Script:CachedAppsList += Get-ItemProperty -Path "Registry::\HKEY_USERS\temp\$32BitPath"
-                $Script:CachedAppsList += Get-ItemProperty -Path "Registry::\HKEY_USERS\temp\$64BitPath"
-                # Run manual GC to allow hive to be unmounted
-                [GC]::Collect()
-                [GC]::WaitForPendingFinalizers()
-                REG UNLOAD HKU\temp
+        if ($CurrentUser -or $GlobalAndCurrentUser) {
+            $Script:CachedAppsList += Get-ItemProperty "Registry::\HKEY_CURRENT_USER\$32BitPath"
+            $Script:CachedAppsList += Get-ItemProperty "Registry::\HKEY_CURRENT_USER\$64BitPath"
+        }
+        if ($AllUsers -or $GlobalAndAllUsers) {
+            Write-Host "Collecting hive data for all users"
+            $AllProfiles = Get-CimInstance Win32_UserProfile | Select-Object LocalPath, SID, Loaded, Special | Where-Object { $_.SID -like "S-1-5-21-*" }
+            $MountedProfiles = $AllProfiles | Where-Object { $_.Loaded -eq $true }
+            $UnmountedProfiles = $AllProfiles | Where-Object { $_.Loaded -eq $false }
+            Write-Host "Processing mounted hives"
+            $MountedProfiles | ForEach-Object {
+                $Script:CachedAppsList += Get-ItemProperty -Path "Registry::\HKEY_USERS\$($_.SID)\$32BitPath"
+                $Script:CachedAppsList += Get-ItemProperty -Path "Registry::\HKEY_USERS\$($_.SID)\$64BitPath"
             }
-            else {
-                Write-Warning "Unable to access registry hive at $Hive"
+            Write-Host "Processing unmounted hives"
+            $UnmountedProfiles | ForEach-Object {
+                $Hive = "$($_.LocalPath)\NTUSER.DAT"
+                Write-Host " -> Mounting hive at $Hive"
+                if (Test-Path $Hive) {
+                    REG LOAD HKU\temp $Hive
+                    $Script:CachedAppsList += Get-ItemProperty -Path "Registry::\HKEY_USERS\temp\$32BitPath"
+                    $Script:CachedAppsList += Get-ItemProperty -Path "Registry::\HKEY_USERS\temp\$64BitPath"
+                    # Run manual GC to allow hive to be unmounted
+                    [GC]::Collect()
+                    [GC]::WaitForPendingFinalizers()
+                    REG UNLOAD HKU\temp
+                }
+                else {
+                    Write-Warning "Unable to access registry hive at $Hive"
+                }
             }
         }
     }
