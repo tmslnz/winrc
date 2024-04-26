@@ -599,6 +599,7 @@ iperf3
 mariadb
 msys2
 nmap
+ntop
 nodejs-lts
 pandoc
 qpdf
@@ -633,6 +634,7 @@ extras/kdiff3
 extras/krita
 extras/logseq
 extras/losslesscut
+extras/msedgeredirect
 extras/obs-studio
 extras/opentabletdriver
 extras/pureref
