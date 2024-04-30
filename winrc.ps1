@@ -437,6 +437,10 @@ function Set-ConfigExplorer {
 ;"TaskbarSizeMove"=dword:00000000
 ;"TaskbarSmallIcons"=dword:00000000
 ;"WebView"=dword:00000001
+
+; Disable "~/3D Objects"
+[-HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}]
+[-HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}]
 '@
     Import-RegSettings $value
 }
