@@ -350,8 +350,7 @@ ServerAliveCountMax 240
 Compression yes
 # CVE-2016-0777, CVE-2016-0778
 UseRoaming no
-IgnoreUnknown AddKeysToAgent
-IgnoreUnknown UseKeychain
+IgnoreUnknown AddKeysToAgent,UseKeychain
 # Store passphrases in Keychain
 AddKeysToAgent yes
 UseKeychain yes
