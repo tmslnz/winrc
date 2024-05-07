@@ -9,9 +9,14 @@ function Main {
     $actions = @'
 Install-PowerShellProfile
 Set-ConfigSSH
+Set-ConfigWSL1
+Set-ConfigWSL2
 Set-ConfigNpm
 Set-ConfigZoxide
 Set-ConfigGit
+Set-ConfigRhinoceros
+Set-ConfigCyberduck
+Set-ConfigPowerToys
 '@
     $actions.Replace("`r`n", "`n").Split("`n") | ForEach-Object -Process {
         if ($WINRC_QUIET) {
