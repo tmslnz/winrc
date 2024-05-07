@@ -8,6 +8,7 @@ $WINRC_QUIET = $true
 function Main {
     $actions = @'
 Install-PowerShellProfile
+Set-ConfigSSH
 Set-ConfigNpm
 Set-ConfigZoxide
 Set-ConfigGit
@@ -332,9 +333,61 @@ function Set-ConfigWSL2 {
 }
 
 function Set-ConfigSSH {
-    <#
-    # TODO
-    #>
+    if (-Not (Test-IsWindows)) { return }
+    if (-Not (Get-Command ssh -ErrorAction SilentlyContinue)) { return }
+    $file = "$home\.ssh\config"
+    $config = @'
+# BEGIN_SHELLRC
+
+Host *
+ServerAliveInterval 60
+ServerAliveCountMax 240
+Compression yes
+# CVE-2016-0777, CVE-2016-0778
+UseRoaming no
+IgnoreUnknown AddKeysToAgent
+IgnoreUnknown UseKeychain
+# Store passphrases in Keychain
+AddKeysToAgent yes
+UseKeychain yes
+
+## Work
+
+Host workers theworkers
+HostName opal6.opalstack.com
+User theworkers
+
+Host cuba
+# Requires Nebula connection
+HostName 100.100.1.1
+User theworkers
+Port 451
+
+Host cuba.local
+HostName cuba.local
+User theworkers
+Port 451
+
+Host nebula
+HostName 135.181.203.23
+User root
+
+# Used for interactive shells
+Host gitea
+IdentitiesOnly yes
+IdentityFile ~/.ssh/id_ed25519_gitea
+User theworkers_gitea
+HostName opal6.opalstack.com
+
+# Used by `git` commands
+Host code.theworkers.net
+HostName code.theworkers.net
+User theworkers_gitea
+
+# END_SHELLRC
+'@
+    New-ConfigSection -String $config -Path $file
+    Update-ConfigSection -String $config -Path $file
 }
 
 function Set-ConfigShareX {
