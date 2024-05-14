@@ -202,6 +202,21 @@ function prompt {
     "${prefix}${body} ${suffix}"
 }
 
+function Update-Winrc {
+    <#
+    # https://stackoverflow.com/a/41618979/218107
+    #>
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $res = Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/tmslnz/winrc/main/winrc.ps1' -ErrorAction SilentlyContinue --TimeoutSec 5
+    }
+    catch {
+        <#Do this if a terminating exception happens#>
+    }
+    Write-Host $res.Content
+    # [IO.File]::AppendAllLines(($Path | Resolve-Path), [string[]]$String)
+}
+
 function Set-ConfigZoxide {
     if (-Not (Test-IsWindows)) { return }
     if (-Not (Get-Command zoxide -ErrorAction SilentlyContinue)) { return }
