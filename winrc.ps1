@@ -8,6 +8,7 @@ $WINRC_QUIET = $true
 function Main {
     $actions = @'
 Install-PowerShellProfile
+Set-ConfigPowershell
 Set-ConfigSSH
 Set-ConfigWSL1
 Set-ConfigWSL2
@@ -215,6 +216,17 @@ function Update-Winrc {
     }
     Write-Host $res.Content
     # [IO.File]::AppendAllLines(($Path | Resolve-Path), [string[]]$String)
+}
+
+function Set-ConfigPowershell {
+    <#
+    Reverse Search
+    https://stackoverflow.com/a/62891313
+    #>
+    Set-PSReadLineOption -HistorySearchCursorMovesToEnd
+    Set-PSReadlineKeyHandler -Key UpArrow -Function HistorySearchBackward
+    Set-PSReadlineKeyHandler -Key DownArrow -Function HistorySearchForward
+    Set-PSReadlineKeyHandler -Key Tab -Function Complete
 }
 
 function Set-ConfigZoxide {
