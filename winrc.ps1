@@ -572,9 +572,31 @@ function Install-PowerShellProfile {
     Update-ConfigSection -String $Content -Path $PROFILE
 }
 
-function Install-CoreApps {
+function Install-CoreTools {
     Install-Scoop
-    
+    Install-SSH
+}
+
+function Install-SSH {
+    Invoke-gsudo -ArgumentList None -ScriptBlock {
+        $name = Get-WindowsCapability -Online | Where-Object Name -like 'OpenSSH.Client*' | Select-Object -Property Name
+        if ($null -ne $name) {
+            Add-WindowsCapability -Online -Name $name
+        }
+        $name = Get-WindowsCapability -Online | Where-Object Name -like 'OpenSSH.Server*' | Select-Object -Property Name
+        if ($null -ne $name) {
+            Add-WindowsCapability -Online -Name $name
+            Start-Service sshd
+            Set-Service -Name sshd -StartupType 'Automatic'
+            if (!(Get-NetFirewallRule -Name "OpenSSH-Server-In-TCP" -ErrorAction SilentlyContinue | Select-Object Name, Enabled)) {
+                Write-Output "Firewall Rule 'OpenSSH-Server-In-TCP' does not exist, creating it..."
+                New-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+            }
+            else {
+                Write-Output "Firewall rule 'OpenSSH-Server-In-TCP' has been created and exists."
+            }
+        }
+    }
 }
 
 function Install-WingetApp {
