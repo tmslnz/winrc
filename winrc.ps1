@@ -411,8 +411,10 @@ function Set-ConfigCyberduck {
     <setting name="browser.move.confirm" value="false" />
     <setting name="bookmark.toggle.options" value="true" />
     #>
+    $Path = "$Home\AppData\Roaming\Cyberduck\Cyberduck.user.config"
+    if (! [System.IO.File]::Exists("$Path")) { return $false }
     $xml = New-Object XML
-    $xml.Load("$Home\AppData\Roaming\Cyberduck\Cyberduck.user.config")
+    $xml.Load("$Path")
     $nodes = $xml.SelectNodes('//setting[@name="CdSettings"]/value/settings/setting')
     $nodes
 }
