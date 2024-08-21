@@ -731,7 +731,6 @@ extras/vlc
 extras/winaero-tweaker
 extras/xnconvert
 extras/xnviewmp
-nirsoft/openedfilesview
 nirsoft/registrychangesview
 nirsoft/searchmyfiles
 nonportable/zadig-np
