@@ -696,10 +696,12 @@ extras/dupeguru
 extras/everything
 extras/gpu-z
 extras/handbrake
+extras/windows
 extras/heidisql
 extras/kdiff3
 extras/msedgeredirect
 extras/opentabletdriver
+versions/dotnet6-sdk
 extras/rapidee
 extras/renamer
 extras/sharex
