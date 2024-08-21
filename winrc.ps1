@@ -658,6 +658,7 @@ function Install-ScoopApps {
 
     # Buckets
     scoop bucket add extras
+    scoop bucket add versions
     scoop bucket add nirsoft
     scoop bucket add java
     scoop bucket add nonportable
