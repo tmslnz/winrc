@@ -665,6 +665,72 @@ function Install-ScoopApps {
 
     # CLI apps
     $list = @'
+docker
+docker-buildx
+everything-cli
+fd
+ffmpeg
+fzf
+handbrake-cli
+iperf3
+mariadb
+msys2
+nmap
+ntop
+nodejs-lts
+rclone
+sqlite
+which
+zoxide
+'@ -Split "`r?`n"
+    scoop install @list
+
+    # GUI
+    $list = @'
+extras/advanced-ip-scanner
+extras/bleachbit
+extras/bulk-crap-uninstaller
+extras/cpu-z
+extras/cyberduck
+extras/dupeguru
+extras/everything
+extras/gpu-z
+extras/handbrake
+extras/heidisql
+extras/kdiff3
+extras/msedgeredirect
+extras/opentabletdriver
+extras/rapidee
+extras/renamer
+extras/sharex
+extras/sharpkeys
+extras/sqlitestudio
+extras/sumatrapdf
+extras/synctrayzor
+extras/treesize-free
+extras/vlc
+extras/winaero-tweaker
+nirsoft/registrychangesview
+nirsoft/searchmyfiles
+nonportable/zadig-np
+'@ -Split "`r?`n"
+    scoop install @list
+}
+
+function Install-ScoopAppsExtra {
+    if (-Not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+        Install-Scoop
+    }
+
+    # Buckets
+    scoop bucket add extras
+    scoop bucket add versions
+    scoop bucket add nirsoft
+    scoop bucket add java
+    scoop bucket add nonportable
+
+    # CLI apps
+    $list = @'
 1password-cli
 bitwarden-cli
 docker
