@@ -1,1 +1,2 @@
-# winrc
+# winrc.ps1
+
