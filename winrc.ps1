@@ -1034,7 +1034,7 @@ function Get-InstalledApplications() {
             $_.PSobject.Properties.Name -contains 'DisplayName'
         }
         | Sort-Object -Property 'DisplayName'
-        | Select-Object -Property 'DisplayName'
+        | Select-Object -Property 'DisplayName' -Unique
     }
     else {
         Write-Output $Script:CachedAppsList
