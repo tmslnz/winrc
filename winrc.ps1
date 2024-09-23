@@ -551,17 +551,20 @@ function Disable-LogitechWebcamMicrophone {
 }
 
 function Install-PowerShellProfile {
+    <#
+    .SYNOPSIS
+        Creates or updates C:\Users\tmslnz\Documents\PowerShell\Microsoft.PowerShell_profile.ps1
+        with a reference to "winrc.ps1"
+    #>
     if ([IO.File]::Exists($PROFILE)) {
         if (! (Select-String -Path $PROFILE -Pattern "BEGIN_SHELLRC" -ErrorAction SilentlyContinue)) {
-            $dirname = ([IO.FileInfo]$PROFILE).DirectoryName
-            $basename = ([IO.FileInfo]$PROFILE).BaseName
-            $ext = ([IO.FileInfo]$PROFILE).Extension
+            $info = [IO.FileInfo]$PROFILE
             $ts = Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
-            $dest = Join-Path -Path $dirname -ChildPath "${basename}_backup_${ts}${ext}"
+            $dest = Join-Path -Path $info.DirectoryName -ChildPath "${info.BaseName}_backup_${ts}${info.Extension}"
             Copy-Item -Path $PROFILE -Destination $dest
         }
     }
-    if (! [IO.File]::Exists($PROFILE)) {
+    else {
         New-Item -ItemType File -Path $PROFILE -Force
     }
     $Value = Join-Path -Path "$PSScriptRoot" -ChildPath 'winrc.ps1'
