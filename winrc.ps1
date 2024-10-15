@@ -1003,14 +1003,12 @@ function Get-InstalledApplications() {
             $MountedProfiles = $AllProfiles | Where-Object { $_.Loaded -eq $true }
             $UnmountedProfiles = $AllProfiles | Where-Object { $_.Loaded -eq $false }
             Write-Host "Processing mounted hives"
-            $MountedProfiles
-            | ForEach-Object {
+            $MountedProfiles | ForEach-Object {
                 $Script:CachedAppsList += Get-ItemProperty -Path "Registry::\HKEY_USERS\$($_.SID)\$32BitPath"
                 $Script:CachedAppsList += Get-ItemProperty -Path "Registry::\HKEY_USERS\$($_.SID)\$64BitPath"
             }
             Write-Host "Processing unmounted hives"
-            $UnmountedProfiles
-            | ForEach-Object {
+            $UnmountedProfiles | ForEach-Object {
                 $Hive = "$($_.LocalPath)\NTUSER.DAT"
                 Write-Host " -> Mounting hive at $Hive"
                 if (Test-Path $Hive) {
@@ -1029,12 +1027,9 @@ function Get-InstalledApplications() {
         }
     }
     if ($NamesOnly -eq $true) {
-        $Script:CachedAppsList
-        | Where-Object {
+        $Script:CachedAppsList | Where-Object {
             $_.PSobject.Properties.Name -contains 'DisplayName'
-        }
-        | Sort-Object -Property 'DisplayName'
-        | Select-Object -Property 'DisplayName' -Unique
+        } | Sort-Object -Property 'DisplayName' | Select-Object -Property 'DisplayName' -Unique
     }
     else {
         Write-Output $Script:CachedAppsList
