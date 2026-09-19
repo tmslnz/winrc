@@ -48,12 +48,43 @@ function Get-Username {
     "$me"
 }
 
+# $PSStyle exists only on PowerShell 7.2+. On Windows PowerShell 5.1 we emulate the
+# small subset used here so every code path survives. Note: on 5.1 the terminal
+# may not understand the ANSI escapes; ANSICON/Windows Terminal handle them fine.
+if (-not (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
+    $PSStyle = @{
+        Bold         = "`e[1m"
+        Dim          = "`e[2m"
+        Underline    = "`e[4m"
+        Reset        = "`e[0m"
+        Foreground   = @{ Red = "`e[31m"; Green = "`e[32m"; Yellow = "`e[33m"; Cyan = "`e[36m" }
+        Background   = @{}
+    }
+}
+
+function Test-IsWindows {
+    if ($IsWindows) { return $true }
+    # Fallback for Windows PowerShell 5.1, where $IsWindows is not defined.
+    if ($PSVersionTable.PSEdition -eq 'Desktop') { return $true }
+    $false
+}
+
+function Test-IsLinux {
+    if ($IsLinux) { return $true }
+    $false
+}
+
+function Test-IsMacOS {
+    if ($IsMacOS) { return $true }
+    $false
+}
+
 function Test-IsAdmin {
-    if (-Not (Test-IsWindows)) {
+    if (Test-IsLinux -or Test-IsMacOS) {
         if ($(id -g) -eq 0 ) { return $true }
         else { return $false }
     }
-    if ((Test-IsWindows) -or $psEdition -eq 'desktop') {
+    if (Test-IsWindows) {
         $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
         $principal = [Security.Principal.WindowsPrincipal]::new($identity)
         $adminRole = [Security.Principal.WindowsBuiltInRole]::Administrator
@@ -64,11 +95,6 @@ function Test-IsAdmin {
 
 function Test-IsDebug {
     Test-Path variable:/PSDebugContext
-}
-
-function Test-IsWindows {
-    if ($Env:OS) { return $true }
-    if (-Not $Env:OS) { return $false }
 }
 
 function Test-IsInstalled {
