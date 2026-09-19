@@ -20,7 +20,19 @@ $script:WinrcRepo = 'tmslnz/winrc'
 $script:WinrcUpdateSource = 'auto'   # 'auto' | 'release' | 'raw'
 $script:WinrcBranch = 'main'
 
+# --- Periodic auto-check -------------------------------------------------------
+# When $script:WinrcAutoCheck is $true, winrc checks for updates in the background
+# on load, at most once per $script:WinrcAutoCheckIntervalDays. The check is silent
+# (runs as a background job so it never delays prompt startup), and when an update
+# is found it is staged to disk; the new code takes effect on the next new shell
+# (the check never force-reloads the running session mid-command).
+$script:WinrcAutoCheck = $true
+$script:WinrcAutoCheckIntervalDays = 3
+# State file remembering the last time a check was performed.
+$script:WinrcStateFile = Join-Path $env:LOCALAPPDATA 'winrc\winrc.state.json'
+
 function Main {
+    Show-WinrcUpdateNotice
     $actions = @'
 Install-PowerShellProfile
 Set-ConfigPowershell
@@ -44,9 +56,10 @@ Set-ConfigPowerToys
         }
         Invoke-Command -ScriptBlock $command
     }
-    $actions.Replace("`r`n", "`n").Split("`n") | ForEach-Object -Process {
-        if ($_.StartsWith('#')) { return }
-        Get-ChildItem -Path "Function:\$_" | Remove-Item
+    # Background periodic update check, only when this is a real interactive shell
+    # (e.g. a profile load), not when the file is run standalone or via Update-Winrc.
+    if ($script:WinrcAutoCheck -and [Environment]::UserInteractive -and $Host.Name -notmatch 'Server|NonInteractive') {
+        Start-WinrcUpdateCheck
     }
 }
 
@@ -556,6 +569,135 @@ function Get-FileHashValue {
     finally {
         $sb.Dispose()
     }
+}
+
+function Read-WinrcState {
+    <#
+    .SYNOPSIS
+        Reads the winrc state file (a small JSON) or returns an empty default.
+    #>
+    try {
+        if ([IO.File]::Exists($script:WinrcStateFile)) {
+            $j = Get-Content -Raw -Path $script:WinrcStateFile | ConvertFrom-Json
+            if ($j) { return $j }
+        }
+    }
+    catch { }
+    [pscustomobject]@{ LastCheckUtc = $null }
+}
+
+function Write-WinrcState {
+    param(
+        [AllowNull()]
+        [datetime]$LastCheckUtc
+    )
+    try {
+        $dir = Split-Path -Parent $script:WinrcStateFile
+        if ($dir) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        $obj = [pscustomobject]@{ LastCheckUtc = $LastCheckUtc }
+        $obj | ConvertTo-Json | Set-Content -Path $script:WinrcStateFile -Encoding UTF8
+    }
+    catch { }
+}
+
+function Test-WinrcUpdateDue {
+    <#
+    .SYNOPSIS
+        Returns $true when a periodic auto-check should run, based on the last check
+        time stored in the state file. Returns $false when disabled or not yet due.
+    #>
+    if (-not $script:WinrcAutoCheck) { return $false }
+    $state = Read-WinrcState
+    if ($null -eq $state.LastCheckUtc -or '' -eq ([string]$state.LastCheckUtc)) { return $true }
+    try {
+        $last = [datetime]$state.LastCheckUtc
+        $due = $last.AddDays($script:WinrcAutoCheckIntervalDays)
+        return [datetime]::UtcNow -ge $due
+    }
+    catch {
+        return $true   # unreadable timestamp -> just check
+    }
+}
+
+function Start-WinrcUpdateCheck {
+    <#
+    .SYNOPSIS
+        Kicks off the periodic self-update check if it is due.
+    .DESCRIPTION
+        Runs the actual check as a background job so it never delays prompt startup.
+        When an update is found it is staged to disk (no in-session reload) and a
+        one-shot notice marker is written; the new code takes effect the next time a
+        shell starts. The check time is recorded regardless of outcome so we don't
+        re-attempt on every launch.
+    #>
+    if (-not (Test-WinrcUpdateDue)) { return }
+
+    # Record the attempt before launching so a slow/offline check can't cause us to
+    # busy-retry on every subsequent prompt.
+    Write-WinrcState -LastCheckUtc ([datetime]::UtcNow)
+
+    $noticePath = Join-Path (Split-Path -Parent $script:WinrcStateFile) 'update-staged.txt'
+    # The job stages the update and drops a marker file that Main picks up on the
+    # next shell to print a one-time notice. (Events tied to a job's session can
+    # leak, so a marker file is more robust.)
+    try {
+        Start-Job -ScriptBlock {
+            param($srcPath, $repo, $branch, $noticePath)
+            function Get-FileHashValue {
+                param([string]$InputObject)
+                $sb = [Security.Cryptography.SHA256]::Create()
+                try {
+                    $bytes = [Text.Encoding]::UTF8.GetBytes($InputObject)
+                    $hash = $sb.ComputeHash($bytes)
+                    return ([BitConverter]::ToString($hash)).Replace('-', '').ToLowerInvariant()
+                }
+                finally { $sb.Dispose() }
+            }
+            # Raw-branch check is used for the periodic pass (release lookup would
+            # need two network calls and adds no value for a silent background check).
+            $url = "https://raw.githubusercontent.com/$repo/$branch/winrc.ps1"
+            try {
+                $remote = (Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 10).Content
+            }
+            catch { return }   # offline / transient -> silently skip
+
+            if (-not (Test-Path $srcPath)) { return }
+            $current = [IO.File]::ReadAllText($srcPath)
+            if ((Get-FileHashValue -InputObject $current) -eq (Get-FileHashValue -InputObject $remote)) {
+                return   # already up to date
+            }
+
+            # Stage the update to disk atomically and signal the next shell.
+            $tmp = Join-Path (Split-Path -Parent $srcPath) (".$((Split-Path -Leaf $srcPath)).tmp.$PID")
+            try {
+                [IO.File]::WriteAllText($tmp, $remote, [Text.UTF8Encoding]::new($false))
+                Copy-Item -Path $srcPath -Destination "$srcPath.bak" -Force -ErrorAction SilentlyContinue
+                Move-Item -Path $tmp -Destination $srcPath -Force
+                $dir = Split-Path -Parent $noticePath
+                if ($dir) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+                [IO.File]::WriteAllText($noticePath, [DateTime]::UtcNow.ToString('o'), [Text.UTF8Encoding]::new($false))
+            }
+            catch {
+                if (Test-Path $tmp) { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
+            }
+        } -ArgumentList $script:WinrcSourcePath, $script:WinrcRepo, $script:WinrcBranch, $noticePath | Out-Null
+    }
+    catch {
+        # Background check is best-effort; never let it break the shell.
+    }
+}
+
+function Show-WinrcUpdateNotice {
+    <#
+    .SYNOPSIS
+        Prints a one-time notice when a background auto-check staged an update that
+        hasn't been acknowledged yet, then clears the marker.
+    #>
+    $notice = Join-Path (Split-Path -Parent $script:WinrcStateFile) 'update-staged.txt'
+    if (-not (Test-Path -LiteralPath $notice)) { return }
+    $stagedAt = Get-Content -Raw -LiteralPath $notice
+    Write-Host "`n[winrc] an update was staged ($stagedAt) and will be active in a new shell. Run 'Update-Winrc' to apply it now." -ForegroundColor Cyan
+    Remove-Item -LiteralPath $notice -Force -ErrorAction SilentlyContinue
 }
 
 function Set-ConfigPowershell {
