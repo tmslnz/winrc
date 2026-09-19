@@ -5,6 +5,21 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 $CachedAppsList = @()
 $WINRC_QUIET = $true
 
+# --- Self-update configuration -------------------------------------------------
+# Where this script was loaded from (needed to replace it in place on update).
+$script:WinrcSourcePath = $PSCommandPath
+if (-not $script:WinrcSourcePath -or -not [IO.File]::Exists($script:WinrcSourcePath)) {
+    $script:WinrcSourcePath = Join-Path $PSScriptRoot 'winrc.ps1'
+}
+# Version stamp. Keep in sync with the version released on GitHub.
+$script:WinrcVersion = '0.1.0'
+# The public repo. Owner/Repo are parsed out of it so one variable drives everything.
+$script:WinrcRepo = 'tmslnz/winrc'
+# Default update source: 'release' prefers the latest GitHub release tag; on failure
+# (or when $UpdateSource -eq 'raw'), falls back to the raw branch file.
+$script:WinrcUpdateSource = 'auto'   # 'auto' | 'release' | 'raw'
+$script:WinrcBranch = 'main'
+
 function Main {
     $actions = @'
 Install-PowerShellProfile
@@ -399,17 +414,148 @@ function prompt {
 
 function Update-Winrc {
     <#
-    # https://stackoverflow.com/a/41618979/218107
+    .SYNOPSIS
+        Self-update winrc.ps1 from a public GitHub repo.
+        Prefers the latest tagged release, falling back to the raw branch file.
+    .DESCRIPTION
+        Downloads the remote winrc.ps1 into a temp file, compares it to the running
+        copy (by content hash). If identical, reports "already up to date". If
+        different, atomically replaces the file on disk and reloads it into this
+        session so the new version takes effect immediately (no shell restart).
+    .PARAMETER Force
+        Force a re-download and reload even if the on-disk hash matches the remote.
+    .PARAMETER CheckOnly
+        Report whether an update is available without applying it.
+    .PARAMETER Source
+        Override the update source for this call: 'auto', 'release', or 'raw'.
+    .PARAMETER NoReload
+        Update the file on disk but do not reload it into the current session.
+        Lets a background check stage the update without disrupting a running
+        session; the new code loads on the next new shell.
     #>
+    [CmdletBinding()]
+    param(
+        [switch]$Force,
+        [switch]$CheckOnly,
+        [switch]$NoReload,
+        [ValidateSet('auto', 'release', 'raw')]
+        [string]$Source = $script:WinrcUpdateSource
+    )
+    $ErrorActionPreference = 'Stop'
+    $repo = $script:WinrcRepo
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+    $remote = $null
+    if ($Source -in @('auto', 'release')) {
+        try {
+            $remote = Get-WinrcRemoteContent -Release
+        }
+        catch {
+            if ($Source -eq 'release') { throw }
+            Write-Verbose "Release lookup failed ($($_.Exception.Message)); falling back to raw."
+        }
+    }
+    if (-not $remote -and $Source -in @('auto', 'raw')) {
+        $remote = Get-WinrcRemoteContent -Raw
+    }
+
+    if (-not $remote) {
+        throw 'Could not obtain remote winrc.ps1 from any configured source.'
+    }
+
+    $currentText = [IO.File]::ReadAllText($script:WinrcSourcePath)
+    $currentHash = Get-FileHashValue -InputObject $currentText
+    $needUpdate = $Force -or ($remote.Hash -ne $currentHash)
+
+    if (-not $needUpdate) {
+        Write-Host "winrc is up to date (v$script:WinrcVersion)." -ForegroundColor Green
+        return
+    }
+
+    if ($CheckOnly) {
+        Write-Host "Update available (remote $($remote.Hash.Substring(0,8)) != local $($currentHash.Substring(0,8)))." -ForegroundColor Yellow
+        return
+    }
+
+    # Atomic replace: write to a sibling temp file first, then move over the target.
+    $targetDir = Split-Path -Parent $script:WinrcSourcePath
+    $targetName = Split-Path -Leaf $script:WinrcSourcePath
+    $tmp = Join-Path $targetDir ".$targetName.tmp.$PID"
     try {
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        $res = Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/tmslnz/winrc/main/winrc.ps1' -ErrorAction SilentlyContinue --TimeoutSec 5
+        [IO.File]::WriteAllText($tmp, $remote.Content, [Text.UTF8Encoding]::new($false))
+        # Preserve any existing file ACL/attributes by removing the temp then moving.
+        if ([IO.File]::Exists($script:WinrcSourcePath)) {
+            Copy-Item -Path $script:WinrcSourcePath -Destination "$script:WinrcSourcePath.bak" -Force -ErrorAction SilentlyContinue
+        }
+        Move-Item -Path $tmp -Destination $script:WinrcSourcePath -Force
     }
     catch {
-        <#Do this if a terminating exception happens#>
+        if ([IO.File]::Exists($tmp)) { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
+        throw "Update failed: $($_.Exception.Message)"
     }
-    Write-Host $res.Content
-    # [IO.File]::AppendAllLines(($Path | Resolve-Path), [string[]]$String)
+
+    if ($NoReload) {
+        Write-Host "winrc updated ($($currentHash.Substring(0,8)) -> $($remote.Hash.Substring(0,8))). Takes effect in a new shell." -ForegroundColor Cyan
+        return
+    }
+
+    Write-Host "winrc updated ($($currentHash.Substring(0,8)) -> $($remote.Hash.Substring(0,8))). Reloading..." -ForegroundColor Cyan
+
+    # Reload into this session so the new code is live right away.
+    . $script:WinrcSourcePath
+}
+
+function Get-WinrcRemoteContent {
+    <#
+    .SYNOPSIS
+        Returns a hashtable with Content (string) and Hash (SHA256) of the remote
+        winrc.ps1 from either a GitHub release asset or the raw branch file.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true, ParameterSetName = 'Release')]
+        [switch]$Release,
+        [Parameter(Mandatory = $true, ParameterSetName = 'Raw')]
+        [switch]$Raw
+    )
+    $repo = $script:WinrcRepo
+
+    if ($PSCmdlet.ParameterSetName -eq 'Release') {
+        # Resolve latest release, then its winrc.ps1 asset via the API (media type = raw body).
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" `
+            -Headers @{ 'User-Agent' = 'winrc' } -ErrorAction Stop
+        $asset = $release.assets | Where-Object { $_.name -eq 'winrc.ps1' } | Select-Object -First 1
+        if (-not $asset) {
+            throw "Latest release '$($release.tag_name)' has no 'winrc.ps1' asset."
+        }
+        $content = Invoke-WebRequest -Uri $asset.browser_download_url -UseBasicParsing -ErrorAction Stop
+        return @{ Content = $content.Content; Hash = Get-FileHashValue -InputObject $content.Content }
+    }
+    else {
+        $branch = $script:WinrcBranch
+        $url = "https://raw.githubusercontent.com/$repo/$branch/winrc.ps1"
+        $content = Invoke-WebRequest -Uri $url -UseBasicParsing -ErrorAction Stop
+        return @{ Content = $content.Content; Hash = Get-FileHashValue -InputObject $content.Content }
+    }
+}
+
+function Get-FileHashValue {
+    <#
+    .SYNOPSIS
+        Returns the lowercase SHA256 hex of a string.
+    #>
+    param(
+        [string]$InputObject
+    )
+    $sb = [Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [Text.Encoding]::UTF8.GetBytes($InputObject)
+        $hash = $sb.ComputeHash($bytes)
+        return ([BitConverter]::ToString($hash)).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $sb.Dispose()
+    }
 }
 
 function Set-ConfigPowershell {
