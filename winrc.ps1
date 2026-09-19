@@ -172,46 +172,119 @@ function Import-RegSettings {
     Remove-Item -Path "$tempFile"
 }
 
-function New-ConfigSection {
-    [cmdletbinding(DefaultParameterSetName = 'Prepend')]
+function Set-ConfigSection {
+    <#
+    .SYNOPSIS
+        Writes an idempotent "SHELLRC" fenced block into a config file.
+    .DESCRIPTION
+        The block is delimited by BEGIN_SHELLRC / END_SHELLRC markers inside a
+        comment line whose first character is one of # ; / . This function:
+          - creates the file (and its parent dirs) if it does not exist,
+          - replaces the existing block in place if the markers are already present,
+          - otherwise prepends (default) or appends (-Append) the block once.
+        Every call is idempotent: running it twice produces the same file.
+    .PARAMETER Path
+        The config file to modify.
+    .PARAMETER String
+        The full block, including the "# BEGIN_SHELLRC" and "# END_SHELLRC" fence lines.
+    .PARAMETER Append
+        Insert the block at the end of the file instead of the top. Useful for apps
+        that read configs top-down and where later values win.
+    .PARAMETER Force
+        Rewrite the block even when the current content matches (useful after a
+        schema change that shouldn't trigger on content hash alone is desired).
+    .EXAMPLE
+        $b = @'
+        # BEGIN_SHELLRC
+        save-exact=true
+        ; END_SHELLRC
+        '@
+        Set-ConfigSection -Path "$home\.npmrc" -String $b
+    #>
+    [CmdletBinding()]
     param(
-        [string]$String,
+        [Parameter(Mandatory = $true)]
         [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$String,
         [switch]$Append,
-        [Parameter(ParameterSetName = "Prepend")]
-        [switch]$Prepend
+        [switch]$Force
     )
-    $ResolvedPath = Resolve-Path -Path $Path -ErrorAction SilentlyContinue
-    if ($ResolvedPath) { $Path = $ResolvedPath }
-    if ($PSCmdlet.ParameterSetName -eq "Prepend") { $Prepend = $true }
-    if (-Not [IO.File]::Exists($Path)) {
-        New-Item -Path $Path -ItemType File -Force
+
+    # Normalize line endings in the block to LF for comparison purposes.
+    $block = $String.Replace("`r`n", "`n").TrimEnd("`n")
+
+    # Ensure parent directory exists.
+    $parent = Split-Path -Parent $Path
+    if ($parent) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+
+    if (-not [IO.File]::Exists($Path)) {
+        # Fresh file: write the block and a trailing newline.
+        New-Item -ItemType File -Path $Path -Force | Out-Null
+        [IO.File]::WriteAllText($Path, $block + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+        return $true
     }
-    if (Select-String -Path $Path -Pattern "BEGIN_SHELLRC") { return $false }
-    if ($Prepend) {
-        $result = @($String) + (Get-Content -Raw -Path $Path)
-        [IO.File]::WriteAllLines(($Path | Resolve-Path), $result)
+
+    $content = [IO.File]::ReadAllText($Path)
+
+    # Regex spans the whole fenced block. It tolerates a leading run of comment
+    # chars and whitespace before each fence line. Captures what's between them.
+    #   ^[ \t]*(?<lead>[#;/])[ \t]*BEGIN_SHELLRC.*?^[ \t]*[#;/][ \t]*END_SHELLRC
+    $pattern = '(?ms)^[ \t]*(?<fence>[#;/])[ \t]*BEGIN_SHELLRC.*?^[ \t]*[#;/][ \t]*END_SHELLRC[ \t]*\r?$'
+    $m = [regex]::Match($content, $pattern)
+
+    if ($m.Success) {
+        # Determine the fence char so we keep the block's own delimiters consistent.
+        $lead = $m.Groups['fence'].Value
+        # If the caller's block already has markers, use those; else build them.
+        if ($block -match '(?m)^[ \t]*[#;/][ \t]*BEGIN_SHELLRC') {
+            $newBlock = $block
+        }
+        else {
+            $newBlock = "$lead BEGIN_SHELLRC`n$block`n$lead END_SHELLRC"
+        }
+        $newBlock = $newBlock.TrimEnd("`n")
+
+        # Normalize both sides (drop trailing CR/LF the regex may have consumed) so
+        # idempotent re-runs are detected as "no change".
+        $existing = $m.Value.Replace("`r`n", "`n").TrimEnd("`r", "`n")
+        $newBlockN = $newBlock.Replace("`r`n", "`n").TrimEnd("`r", "`n")
+        if (-not $Force -and ($existing -eq $newBlockN)) {
+            return $false   # no change
+        }
+
+        # Remove the matched region and insert the new block. Any line terminator
+        # that followed END_SHELLRC (and wasn't consumed by the regex's \r?) stays
+        # in $content untouched, so content after the block stays separated.
+        $replaced = $content.Remove($m.Index, $m.Length).Insert($m.Index, $newBlock)
+        [IO.File]::WriteAllText($Path, $replaced, [Text.UTF8Encoding]::new($false))
+        return $true
     }
+
+    # Marker not present: insert the block. Ensure the file ends with a newline
+    # before appending, so we don't glue onto the last existing line.
     if ($Append) {
-        [IO.File]::AppendAllLines(($Path | Resolve-Path), [string[]]$String)
+        $sep = if ($content -and -not $content.EndsWith("`n") -and -not $content.EndsWith("`r")) { [Environment]::NewLine } else { '' }
+        $new = $content + $sep + $block + [Environment]::NewLine
     }
+    else {
+        $body = if ($content -and -not $content.EndsWith("`n") -and -not $content.EndsWith("`r")) { [Environment]::NewLine + $content } else { $content }
+        $new = $block + [Environment]::NewLine + $body
+    }
+    [IO.File]::WriteAllText($Path, $new, [Text.UTF8Encoding]::new($false))
+    return $true
 }
 
+# Backward-compatible aliases so any existing dot-sourced callers keep working.
+function New-ConfigSection {
+    [CmdletBinding()]
+    param([string]$String, [string]$Path, [switch]$Append, [switch]$Prepend)
+    Set-ConfigSection -String $String -Path $Path -Append:$Append
+}
 function Update-ConfigSection {
-    param(
-        [string]$String,
-        [string]$Path
-    )
-    if (! [System.IO.File]::Exists("$Path")) { return $false }
-    if (! (Select-String -Path $Path -Pattern "BEGIN_SHELLRC")) { return $false }
-    $content = [IO.File]::ReadAllText($Path)
-    $pattern = '(?smi)[#;/].*?BEGIN_SHELLRC(.*?)[#;/].*?END_SHELLRC'
-    $result = $content | Select-String -Pattern $pattern -AllMatches | ForEach-Object { $_.Matches } | ForEach-Object { $_.Value }
-    $result = $result.Replace("`r`n", "`n")
-    $String = $String.Replace("`r`n", "`n")
-    if ($result -eq $String) { return $false }
-    $replaced = $content -replace $pattern, $String
-    [IO.File]::WriteAllLines(($Path | Resolve-Path), $replaced)
+    [CmdletBinding()]
+    param([string]$String, [string]$Path)
+    Set-ConfigSection -String $String -Path $Path
 }
 
 function prompt {
@@ -282,13 +355,12 @@ fund=false
 long=true
 ; END_SHELLRC
 '@
-    New-ConfigSection -String $config -Path $file
-    Update-ConfigSection -String $config -Path $file
+    Set-ConfigSection -String $config -Path $file
 }
 
 function Set-ConfigGit {
     if (-Not (Test-IsWindows)) { return }
-    if (-Not (Get-Command npm -ErrorAction SilentlyContinue)) { return }
+    if (-Not (Get-Command git -ErrorAction SilentlyContinue)) { return }
     $file = "$home\.config\git\config"
     $config = @'
 # BEGIN_SHELLRC
@@ -328,8 +400,7 @@ function Set-ConfigGit {
     ui = auto
 # END_SHELLRC
 '@
-    New-ConfigSection -String $config -Path $file
-    Update-ConfigSection -String $config -Path $file
+    Set-ConfigSection -String $config -Path $file
     $file = "$home\.config\git\ignore"
     $config = @'
 # BEGIN_SHELLRC
@@ -359,16 +430,14 @@ $RECYCLE.BIN/
 *.lnk
 # END_SHELLRC
 '@
-    New-ConfigSection -String $config -Path $file
-    Update-ConfigSection -String $config -Path $file
+    Set-ConfigSection -String $config -Path $file
     $file = "$home\.config\git\attributes"
     $config = @'
 # BEGIN_SHELLRC
 
 # END_SHELLRC
 '@
-    New-ConfigSection -String $config -Path $file
-    Update-ConfigSection -String $config -Path $file
+    Set-ConfigSection -String $config -Path $file
 }
 
 function Set-ConfigRhinoceros {
@@ -410,8 +479,7 @@ UseKeychain yes
 
 # END_SHELLRC
 '@
-    New-ConfigSection -String $config -Path $file
-    Update-ConfigSection -String $config -Path $file
+    Set-ConfigSection -String $config -Path $file
 }
 
 function Set-ConfigShareX {
@@ -599,8 +667,7 @@ function Install-PowerShellProfile {
 . '$Value'
 # END_SHELLRC
 "@
-    New-ConfigSection -String $Content -Path $PROFILE
-    Update-ConfigSection -String $Content -Path $PROFILE
+    Set-ConfigSection -String $Content -Path $PROFILE
 }
 
 function Install-CoreTools {
