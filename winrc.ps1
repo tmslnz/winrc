@@ -1053,27 +1053,65 @@ function Import-RegSettings {
 function Install-PowerShellProfile {
     <#
     .SYNOPSIS
-        Creates or updates C:\Users\tmslnz\Documents\PowerShell\Microsoft.PowerShell_profile.ps1
-        with a reference to "winrc.ps1"
+        Installs the winrc.ps1 loader into the startup profiles of both PowerShell
+        engines, each as a SHELLRC-fenced block written through Set-ConfigSection.
+    .DESCRIPTION
+        Windows PowerShell 5.1 and PowerShell 7 each read their own profile file,
+        so a loader written only to $PROFILE (the current engine's file) is
+        invisible to the other. This writes the same fenced loader block into both
+        shared per-engine startup files:
+          - <Documents>\PowerShell\profile.ps1            (PowerShell 7)
+          - <Documents>\WindowsPowerShell\profile.ps1       (Windows PowerShell 5.1)
+        Each write goes through Set-ConfigSection, which is idempotent and
+        compare-based: it only rewrites a section whose content differs from the
+        value stored here, and fences it with BEGIN_SHELLRC / END_SHELLRC. An
+        existing profile is backed up (once) before its first SHELLRC insert so
+        user content is never lost.
     #>
-    if ([IO.File]::Exists($PROFILE)) {
-        if (! (Select-String -Path $PROFILE -Pattern "BEGIN_SHELLRC" -ErrorAction SilentlyContinue)) {
-            $info = [IO.FileInfo]$PROFILE
-            $ts = Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
-            $dest = Join-Path -Path $info.DirectoryName -ChildPath "${info.BaseName}_backup_${ts}${info.Extension}"
-            Copy-Item -Path $PROFILE -Destination $dest
-        }
-    }
-    else {
-        New-Item -ItemType File -Path $PROFILE -Force
-    }
-    $Value = Join-Path -Path "$PSScriptRoot" -ChildPath 'winrc.ps1'
+    # Locate winrc.ps1 that is running right now, so the loader points at it.
+    $loader = Join-Path -Path "$PSScriptRoot" -ChildPath 'winrc.ps1'
+
+    # The literal text written into each profile. Kept as an explicit value here so
+    # the user can see exactly what the script stores, and so Set-ConfigSection can
+    # compare it against whatever is already in the file before deciding to write.
     $Content = @"
 # BEGIN_SHELLRC
-. '$Value'
+# Load winrc.ps1 (terminal + config bootstrap). See https://github.com/tmslnz/winrc
+. '$loader'
 # END_SHELLRC
 "@
-    Set-ConfigSection -String $Content -Path $PROFILE
+
+    $myDocs = [Environment]::GetFolderPath('MyDocuments')
+    $profiles = @(
+        (Join-Path -Path $myDocs -ChildPath 'PowerShell\profile.ps1'),           # PowerShell 7
+        (Join-Path -Path $myDocs -ChildPath 'WindowsPowerShell\profile.ps1')      # Windows PowerShell 5.1
+    )
+
+    $changed = $false
+    foreach ($profile in $profiles) {
+        # Back up an existing profile only when we are about to insert a SHELLRC
+        # section for the first time (i.e. it exists, has content, and no fence yet).
+        if ([IO.File]::Exists($profile)) {
+            if (-not (Get-Content -Raw -Path $profile -ErrorAction SilentlyContinue |
+                Select-String -Pattern 'BEGIN_SHELLRC' -Quiet -ErrorAction SilentlyContinue)) {
+                $info = [IO.FileInfo]::new($profile)
+                $ts = Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
+                $dest = Join-Path -Path $info.DirectoryName -ChildPath "${info.BaseName}_backup_${ts}${info.Extension}"
+                Copy-Item -Path $profile -Destination $dest -ErrorAction SilentlyContinue
+                Write-Information -MessageData "winrc: backed up $profile -> $dest" -InformationAction Continue
+            }
+        }
+        # Set-ConfigSection is compare-based and returns $true only when it writes.
+        if (Set-ConfigSection -String $Content -Path $profile) {
+            $changed = $true
+            Write-Information -MessageData "winrc: wrote loader to $profile" -InformationAction Continue
+        }
+    }
+
+    if ($changed) {
+        Write-Host "winrc installed for both PowerShell 7 and Windows PowerShell 5.1." -ForegroundColor Cyan
+        Write-Host "Restart your terminal(s) for the new prompt to take effect." -ForegroundColor Yellow
+    }
 }
 
 function Install-CoreTools {
