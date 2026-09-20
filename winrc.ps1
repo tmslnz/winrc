@@ -1070,9 +1070,14 @@ function Install-PowerShellProfile {
     #>
     # Locate winrc.ps1 that is running right now, so the loader points at it.
     # Prefer the resolved source path set at the top of the script (handles being
-    # dot-sourced without a real file context); fall back to $PSScriptRoot.
-    $loader = if ([IO.File]::Exists($script:WinrcSourcePath)) { $script:WinrcSourcePath }
-              else { Join-Path -Path "$PSScriptRoot" -ChildPath 'winrc.ps1' }
+    # dot-sourced without a real file context); fall back to $PSScriptRoot, and
+    # finally to the current directory, so an empty path never corrupts the fence.
+    $loader = $script:WinrcSourcePath
+    if (-not $loader -or -not [IO.File]::Exists($loader)) {
+        $candidate = Join-Path -Path $PSScriptRoot -ChildPath 'winrc.ps1' -ErrorAction SilentlyContinue
+        if (-not [IO.File]::Exists($candidate)) { $candidate = Join-Path -Path (Get-Location) -ChildPath 'winrc.ps1' }
+        $loader = $candidate
+    }
 
     # The literal text written into each profile. Kept as an explicit value here so
     # the user can see exactly what the script stores, and so Set-ConfigSection can
