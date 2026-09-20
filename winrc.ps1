@@ -1,4 +1,4 @@
-﻿# Set-StrictMode -Version
+# Set-StrictMode -Version
 $progressPreference = 'SilentlyContinue'
 
 # PowerShell 7 and Windows PowerShell 5.1 both honor RemoteSigned, which lets a
@@ -159,7 +159,11 @@ function Get-ShortPath {
 }
 
 function prompt {
-    # Capture the previous command's exit code before doing any work.
+    # Success/failure state of the previous command. We read this from $? (via
+    # $global:LASTEXITCODE) because $LASTEXITCODE alone is set only by external
+    # commands; builtins like `cd` never touch it, so a clean `cd .` would keep
+    # showing a stale error. $? is updated for both builtins and externals.
+    $ok = $global:?
     $code = $global:LASTEXITCODE
     $prefix = $(
         if (Test-IsDebug) { '[DEBUG] ' }
@@ -170,9 +174,15 @@ function prompt {
     $hostname = [System.Net.Dns]::GetHostName()
     $cwd = Get-ShortPath (Get-Location).Path
 
-    # Exit-code indicator: red ✘ with code on failure, dim ✓ on success.
-    if ($code -ne 0 -and $null -ne $code) {
-        $status = "$($PSStyle.Foreground.Red)$([char]0x2718) $code$($PSStyle.Reset) "
+    # Exit-code indicator: red ✘ with code on failure, green ✓ on success.
+    if (-not $ok) {
+        # Show the numeric code when we have one, otherwise an undifferentiated ✘.
+        if ($null -ne $code -and $code -ne 0) {
+            $status = "$($PSStyle.Foreground.Red)$([char]0x2718) $code$($PSStyle.Reset) "
+        }
+        else {
+            $status = "$($PSStyle.Foreground.Red)$([char]0x2718)$($PSStyle.Reset) "
+        }
     }
     else {
         $status = "$($PSStyle.Foreground.Green)$([char]0x2714)$($PSStyle.Reset) "
