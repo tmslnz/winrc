@@ -609,144 +609,6 @@ function Update-ConfigSection {
     Set-ConfigSection -String $String -Path $Path
 }
 
-function Get-Username {
-    if ($env:userdomain -AND $env:username) {
-        $me = "$($env:username)"
-    }
-    elseif ($env:LOGNAME) {
-        $me = $env:LOGNAME
-    }
-    else {
-        $me = "[?]"
-    }
-    "$me"
-}
-
-# $PSStyle exists only on PowerShell 7.2+. On Windows PowerShell 5.1 we emulate the
-# small subset used here so every code path survives. Note: on 5.1 the terminal
-# may not understand the ANSI escapes; ANSICON/Windows Terminal handle them fine.
-if (-not (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
-    $PSStyle = @{
-        Bold         = "`e[1m"
-        Dim          = "`e[2m"
-        Underline    = "`e[4m"
-        Reset        = "`e[0m"
-        Foreground   = @{ Red = "`e[31m"; Green = "`e[32m"; Yellow = "`e[33m"; Cyan = "`e[36m" }
-        Background   = @{}
-    }
-}
-
-function Test-IsWindows {
-    if ($IsWindows) { return $true }
-    # Fallback for Windows PowerShell 5.1, where $IsWindows is not defined.
-    if ($PSVersionTable.PSEdition -eq 'Desktop') { return $true }
-    $false
-}
-
-function Test-IsLinux {
-    if ($IsLinux) { return $true }
-    $false
-}
-
-function Test-IsMacOS {
-    if ($IsMacOS) { return $true }
-    $false
-}
-
-function Test-IsAdmin {
-    if (Test-IsLinux -or Test-IsMacOS) {
-        if ($(id -g) -eq 0 ) { return $true }
-        else { return $false }
-    }
-    if (Test-IsWindows) {
-        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-        $principal = [Security.Principal.WindowsPrincipal]::new($identity)
-        $adminRole = [Security.Principal.WindowsBuiltInRole]::Administrator
-        return $principal.IsInRole($adminRole)
-    }
-    $false
-}
-
-function Test-IsDebug {
-    Test-Path variable:/PSDebugContext
-}
-
-function Test-IsInstalled {
-    <#
-    TODO: split display name on:
-    - v[0-9]
-    - [0-9]
-    - \(
-    #>
-    param (
-        [string] $Name
-    )
-    # $res = Get-InstalledApplications | Where-Object -DisplayName -Like "${Name}" -ErrorAction SilentlyContinue
-    $res = Get-InstalledApplications | Where-Object {
-        ($_.PSobject.Properties.Name -contains 'DisplayName') -and ($_.DisplayName -like "${Name}")
-    }
-    $null -ne $res
-}
-
-function New-Symlink {
-    try {
-        New-Item -ItemType 'SymbolicLink' @args -ErrorAction Stop
-    }
-    catch {
-        gsudo { New-Item -ItemType 'SymbolicLink' @args } -args @($args)
-    }
-}
-
-function New-TemporaryDirectory {
-    <#
-    .SYNOPSIS
-    https://stackoverflow.com/a/34559554
-    #>
-    $parent = [System.IO.Path]::GetTempPath()
-    [string] $name = [System.Guid]::NewGuid()
-    New-Item -ItemType Directory -Path (Join-Path $parent $name)
-}
-
-function Grant-ReadAccess {
-    param (
-        [Parameter(mandatory = $true)]
-        [string]$Account,
-        [Parameter(mandatory = $true)]
-        [string]$Path
-    )
-    $ErrorActionPreference = 'Stop'
-    $Acl = Get-Acl $Path
-    $arguments = $account, "ReadAndExecute", "ContainerInherit, ObjectInherit", "None", "Allow"
-    $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule $arguments
-    $acl.SetAccessRule($accessRule)
-    Set-Acl -Path $Path -AclObject $Acl
-}
-
-function Import-RegSettings {
-    param (
-        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = "Value")]
-        [ValidateNotNullOrEmpty()]
-        [string]$Value
-    )
-    if (-Not (Test-IsWindows)) { return }
-    if (-Not (Get-Command gsudo -ErrorAction SilentlyContinue)) {
-        Write-Warning -Message 'Please install gsudo first. Aborting.'
-        return
-    }
-    $header = 'Windows Registry Editor Version 5.00'
-    $regString = ($header + "`n" + $Value) -replace "\r?\n", "`r`n"
-    $tempFile = "$env:TEMP\winrc.reg"
-    $regString | Out-File -FilePath "$tempFile" -Encoding unicode
-    try {
-        reg import "$tempFile"
-    }
-    catch {
-        gsudo reg import "$tempFile"
-    }
-    Remove-Item -Path "$tempFile"
-}
-
-# Backward-compatible aliases so any existing dot-sourced callers keep working.
 function Update-Winrc {
     <#
     .SYNOPSIS
@@ -1022,6 +884,144 @@ function Show-WinrcUpdateNotice {
     Remove-Item -LiteralPath $notice -Force -ErrorAction SilentlyContinue
 }
 
+function Get-Username {
+    if ($env:userdomain -AND $env:username) {
+        $me = "$($env:username)"
+    }
+    elseif ($env:LOGNAME) {
+        $me = $env:LOGNAME
+    }
+    else {
+        $me = "[?]"
+    }
+    "$me"
+}
+
+# $PSStyle exists only on PowerShell 7.2+. On Windows PowerShell 5.1 we emulate the
+# small subset used here so every code path survives. Note: on 5.1 the terminal
+# may not understand the ANSI escapes; ANSICON/Windows Terminal handle them fine.
+if (-not (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
+    $PSStyle = @{
+        Bold         = "`e[1m"
+        Dim          = "`e[2m"
+        Underline    = "`e[4m"
+        Reset        = "`e[0m"
+        Foreground   = @{ Red = "`e[31m"; Green = "`e[32m"; Yellow = "`e[33m"; Cyan = "`e[36m" }
+        Background   = @{}
+    }
+}
+
+function Test-IsWindows {
+    if ($IsWindows) { return $true }
+    # Fallback for Windows PowerShell 5.1, where $IsWindows is not defined.
+    if ($PSVersionTable.PSEdition -eq 'Desktop') { return $true }
+    $false
+}
+
+function Test-IsLinux {
+    if ($IsLinux) { return $true }
+    $false
+}
+
+function Test-IsMacOS {
+    if ($IsMacOS) { return $true }
+    $false
+}
+
+function Test-IsAdmin {
+    if (Test-IsLinux -or Test-IsMacOS) {
+        if ($(id -g) -eq 0 ) { return $true }
+        else { return $false }
+    }
+    if (Test-IsWindows) {
+        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+        $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+        $adminRole = [Security.Principal.WindowsBuiltInRole]::Administrator
+        return $principal.IsInRole($adminRole)
+    }
+    $false
+}
+
+function Test-IsDebug {
+    Test-Path variable:/PSDebugContext
+}
+
+function Test-IsInstalled {
+    <#
+    TODO: split display name on:
+    - v[0-9]
+    - [0-9]
+    - \(
+    #>
+    param (
+        [string] $Name
+    )
+    # $res = Get-InstalledApplications | Where-Object -DisplayName -Like "${Name}" -ErrorAction SilentlyContinue
+    $res = Get-InstalledApplications | Where-Object {
+        ($_.PSobject.Properties.Name -contains 'DisplayName') -and ($_.DisplayName -like "${Name}")
+    }
+    $null -ne $res
+}
+
+function New-Symlink {
+    try {
+        New-Item -ItemType 'SymbolicLink' @args -ErrorAction Stop
+    }
+    catch {
+        gsudo { New-Item -ItemType 'SymbolicLink' @args } -args @($args)
+    }
+}
+
+function New-TemporaryDirectory {
+    <#
+    .SYNOPSIS
+    https://stackoverflow.com/a/34559554
+    #>
+    $parent = [System.IO.Path]::GetTempPath()
+    [string] $name = [System.Guid]::NewGuid()
+    New-Item -ItemType Directory -Path (Join-Path $parent $name)
+}
+
+function Grant-ReadAccess {
+    param (
+        [Parameter(mandatory = $true)]
+        [string]$Account,
+        [Parameter(mandatory = $true)]
+        [string]$Path
+    )
+    $ErrorActionPreference = 'Stop'
+    $Acl = Get-Acl $Path
+    $arguments = $account, "ReadAndExecute", "ContainerInherit, ObjectInherit", "None", "Allow"
+    $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule $arguments
+    $acl.SetAccessRule($accessRule)
+    Set-Acl -Path $Path -AclObject $Acl
+}
+
+function Import-RegSettings {
+    param (
+        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = "Value")]
+        [ValidateNotNullOrEmpty()]
+        [string]$Value
+    )
+    if (-Not (Test-IsWindows)) { return }
+    if (-Not (Get-Command gsudo -ErrorAction SilentlyContinue)) {
+        Write-Warning -Message 'Please install gsudo first. Aborting.'
+        return
+    }
+    $header = 'Windows Registry Editor Version 5.00'
+    $regString = ($header + "`n" + $Value) -replace "\r?\n", "`r`n"
+    $tempFile = "$env:TEMP\winrc.reg"
+    $regString | Out-File -FilePath "$tempFile" -Encoding unicode
+    try {
+        reg import "$tempFile"
+    }
+    catch {
+        gsudo reg import "$tempFile"
+    }
+    Remove-Item -Path "$tempFile"
+}
+
+# Backward-compatible aliases so any existing dot-sourced callers keep working.
 function Disable-LogitechWebcamMicrophone {
     if (!(Test-IsWindows)) { return }
     gsudo Get-PnpDevice -Class AudioEndpoint -FriendlyName "*Logitech*" | Disable-PnpDevice -Confirm $false
