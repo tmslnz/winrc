@@ -1,4 +1,4 @@
-# Set-StrictMode -Version
+﻿# Set-StrictMode -Version
 $progressPreference = 'SilentlyContinue'
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
@@ -171,7 +171,7 @@ function prompt {
     $gitSeg = ''
     if ($git -and $git.Branch) {
         $color = if ($git.Dirty) { $PSStyle.Foreground.Yellow } else { $PSStyle.Foreground.Cyan }
-        $mark  = if ($git.Dirty) { ' *' } else { '' }
+        $mark = if ($git.Dirty) { ' *' } else { '' }
         $gitSeg = " $($PSStyle.Dim)($($PSStyle.Reset)$color$($git.Branch)$mark$($PSStyle.Reset)$($PSStyle.Dim))$($PSStyle.Reset)"
     }
 
@@ -914,12 +914,12 @@ function Show-WinrcUpdateNotice {
 # may not understand the ANSI escapes; ANSICON/Windows Terminal handle them fine.
 if (-not (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
     $PSStyle = @{
-        Bold         = "`e[1m"
-        Dim          = "`e[2m"
-        Underline    = "`e[4m"
-        Reset        = "`e[0m"
-        Foreground   = @{ Red = "`e[31m"; Green = "`e[32m"; Yellow = "`e[33m"; Cyan = "`e[36m" }
-        Background   = @{}
+        Bold       = "`e[1m"
+        Dim        = "`e[2m"
+        Underline  = "`e[4m"
+        Reset      = "`e[0m"
+        Foreground = @{ Red = "`e[31m"; Green = "`e[32m"; Yellow = "`e[33m"; Cyan = "`e[36m" }
+        Background = @{}
     }
 }
 
@@ -1101,7 +1101,7 @@ function Install-PowerShellProfile {
         # section for the first time (i.e. it exists, has content, and no fence yet).
         if ([IO.File]::Exists($profile)) {
             if (-not (Get-Content -Raw -Path $profile -ErrorAction SilentlyContinue |
-                Select-String -Pattern 'BEGIN_SHELLRC' -Quiet -ErrorAction SilentlyContinue)) {
+                    Select-String -Pattern 'BEGIN_SHELLRC' -Quiet -ErrorAction SilentlyContinue)) {
                 $info = [IO.FileInfo]::new($profile)
                 $ts = Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
                 $dest = Join-Path -Path $info.DirectoryName -ChildPath "${info.BaseName}_backup_${ts}${info.Extension}"
