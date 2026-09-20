@@ -897,20 +897,6 @@ function Get-Username {
     "$me"
 }
 
-# $PSStyle exists only on PowerShell 7.2+. On Windows PowerShell 5.1 we emulate the
-# small subset used here so every code path survives. Note: on 5.1 the terminal
-# may not understand the ANSI escapes; ANSICON/Windows Terminal handle them fine.
-if (-not (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
-    $PSStyle = @{
-        Bold         = "`e[1m"
-        Dim          = "`e[2m"
-        Underline    = "`e[4m"
-        Reset        = "`e[0m"
-        Foreground   = @{ Red = "`e[31m"; Green = "`e[32m"; Yellow = "`e[33m"; Cyan = "`e[36m" }
-        Background   = @{}
-    }
-}
-
 function Test-IsWindows {
     if ($IsWindows) { return $true }
     # Fallback for Windows PowerShell 5.1, where $IsWindows is not defined.
@@ -1019,6 +1005,20 @@ function Import-RegSettings {
         gsudo reg import "$tempFile"
     }
     Remove-Item -Path "$tempFile"
+}
+
+# $PSStyle exists only on PowerShell 7.2+. On Windows PowerShell 5.1 we emulate the
+# small subset used here so every code path survives. Note: on 5.1 the terminal
+# may not understand the ANSI escapes; ANSICON/Windows Terminal handle them fine.
+if (-not (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
+    $PSStyle = @{
+        Bold         = "`e[1m"
+        Dim          = "`e[2m"
+        Underline    = "`e[4m"
+        Reset        = "`e[0m"
+        Foreground   = @{ Red = "`e[31m"; Green = "`e[32m"; Yellow = "`e[33m"; Cyan = "`e[36m" }
+        Background   = @{}
+    }
 }
 
 # Backward-compatible aliases so any existing dot-sourced callers keep working.
