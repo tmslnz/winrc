@@ -173,6 +173,328 @@ function prompt {
     "${prefix}${status}${who}${where}${gitSeg} ${suffix}"
 }
 
+function Set-ConfigPowershell {
+    <#
+    Reverse Search
+    https://stackoverflow.com/a/62891313
+    #>
+    Set-PSReadLineOption -HistorySearchCursorMovesToEnd
+    Set-PSReadlineKeyHandler -Key UpArrow -Function HistorySearchBackward
+    Set-PSReadlineKeyHandler -Key DownArrow -Function HistorySearchForward
+    Set-PSReadlineKeyHandler -Key Tab -Function Complete
+}
+
+function Set-ConfigZoxide {
+    if (-Not (Test-IsWindows)) { return }
+    if (-Not (Get-Command zoxide -ErrorAction SilentlyContinue)) { return }
+    Invoke-Expression (& {
+            $hook = if ($PSVersionTable.PSVersion.Major -ge 6) {
+                'pwd'
+            }
+            else {
+                'prompt'
+            } (zoxide init powershell --hook $hook | Out-String)
+        })
+}
+
+function Set-ConfigNpm {
+    if (-Not (Test-IsWindows)) { return }
+    if (-Not (Get-Command npm -ErrorAction SilentlyContinue)) { return }
+    $file = "$home\.npmrc"
+    $config = @'
+; BEGIN_SHELLRC
+; https://docs.npmjs.com/cli/using-npm/config
+save-exact=true
+prefer-offline=true
+update-notifier=false
+fund=false
+long=true
+; END_SHELLRC
+'@
+    Set-ConfigSection -String $config -Path $file
+}
+
+function Set-ConfigGit {
+    if (-Not (Test-IsWindows)) { return }
+    if (-Not (Get-Command git -ErrorAction SilentlyContinue)) { return }
+    $file = "$home\.config\git\config"
+    $config = @'
+# BEGIN_SHELLRC
+[init]
+    defaultBranch = main
+
+[core]
+    autocrlf = true
+    eol = native
+    sshCommand = C:/Windows/System32/OpenSSH/ssh.exe
+    # https://git-scm.com/docs/git-config#Documentation/git-config.txt-corewhitespace
+    whitespace = space-before-tab,trailing-space
+    # https://git-scm.com/docs/git-config#Documentation/git-config.txt-corequotePath
+    quotepath = false
+    bigFileThreshold = 64m
+
+[safe]
+    directory = *
+
+[filter "lfs"]
+    clean = git-lfs clean -- %f
+    smudge = git-lfs smudge -- %f
+    process = git-lfs filter-process
+    required = true
+
+[merge]
+    # Include summaries of merged commits in newly created merge commit messages
+    log = true
+
+[credential]
+    helper = wincred
+
+[push]
+    default = simple
+
+[color]
+    ui = auto
+# END_SHELLRC
+'@
+    Set-ConfigSection -String $config -Path $file
+    $file = "$home\.config\git\ignore"
+    $config = @'
+# BEGIN_SHELLRC
+# Windows thumbnail cache files
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+# Dump file
+*.stackdump
+
+# Folder config file
+[Dd]esktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+# END_SHELLRC
+'@
+    Set-ConfigSection -String $config -Path $file
+    $file = "$home\.config\git\attributes"
+    $config = @'
+# BEGIN_SHELLRC
+
+# END_SHELLRC
+'@
+    Set-ConfigSection -String $config -Path $file
+}
+
+function Set-ConfigRhinoceros {
+    <#
+    # TODO
+    $hosts = [Environment]::SystemDirectory + '\drivers\etc\hosts'
+    #>
+}
+
+function Set-ConfigWSL1 {
+    <#
+    # TODO
+    #>
+}
+
+function Set-ConfigWSL2 {
+    <#
+    # TODO
+    #>
+}
+
+function Set-ConfigSSH {
+    if (-Not (Test-IsWindows)) { return }
+    if (-Not (Get-Command ssh -ErrorAction SilentlyContinue)) { return }
+    $file = "$home\.ssh\config"
+    $config = @'
+# BEGIN_SHELLRC
+
+Host *
+ServerAliveInterval 60
+ServerAliveCountMax 240
+Compression yes
+# CVE-2016-0777, CVE-2016-0778
+UseRoaming no
+IgnoreUnknown AddKeysToAgent,UseKeychain
+# Store passphrases in Keychain
+AddKeysToAgent yes
+UseKeychain yes
+
+# END_SHELLRC
+'@
+    Set-ConfigSection -String $config -Path $file
+}
+
+function Set-ConfigShareX {
+    # TODO
+    <#
+    $a = Get-Content 'D:\temp\mytest.json' -raw | ConvertFrom-Json
+    $a.update | % {if($_.name -eq 'test1'){$_.version=3.0}}
+    $a | ConvertTo-Json -depth 32| set-content 'D:\temp\mytestBis.json'
+    #>
+}
+
+function Set-ConfigCyberduck {
+    <#
+    TODO
+    C:\Users\tmslnz\AppData\Roaming\Cyberduck\Cyberduck.user.config
+
+    <setting name="update.check" value="false" />
+    <setting name="queue.window.open.default" value="false" />
+    <setting name="editor.alwaysusedefault" value="true" />
+    <setting name="editor.bundleidentifier" value="c:\program files\sublime text\sublime_text.exe" />
+    <setting name="browser.doubleclick.edit" value="true" />
+    <setting name="browser.enterkey.rename" value="true" />
+    <setting name="browser.move.confirm" value="false" />
+    <setting name="bookmark.toggle.options" value="true" />
+    #>
+    $Path = "$Home\AppData\Roaming\Cyberduck\Cyberduck.user.config"
+    if (! [System.IO.File]::Exists("$Path")) { return $false }
+    $xml = New-Object XML
+    $xml.Load("$Path")
+    $nodes = $xml.SelectNodes('//setting[@name="CdSettings"]/value/settings/setting')
+    $nodes
+}
+
+function Set-ConfigPowerToys {
+    <#
+    $ TODO
+    C:\Users\tmslnz\AppData\Local\Microsoft\PowerToys\Keyboard Manager
+    #>
+}
+
+function Set-ConfigExplorer {
+    # Make AppData folder visible
+    $appData = Split-Path $env:APPDATA -Parent
+    Set-ItemProperty -Path $appData -Name Attributes -Value Normal
+    # https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gppref/3c837e92-016e-4148-86e5-b4f0381a757f
+    $value = @'
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+
+; Show all file extensions
+"HideFileExt"=dword:00000000
+
+; Show hidden files
+"Hidden"=dword:00000002
+
+; Displays compressed and encrypted NTFS files in color
+"ShowCompColor"=dword:00000001
+
+; Do not change case of path elements
+"DontPrettyPath"=dword:00000001
+
+; Allow bottom-right hover to show Desktop
+"DisablePreviewDesktop"=dword:00000000
+
+; Group when full
+"TaskbarGlomLevel"=dword:00000001
+
+;"AlwaysShowMenus"=dword:00000001
+;"AutoCheckSelect"=dword:00000000
+;"DontUsePowerShellOnWinX"=dword:00000000
+;"ExtendedUIHoverTime"=dword:00000190
+;"Filter"=dword:00000000
+;"HideIcons"=dword:00000000
+;"HideMergeConflicts"=dword:00000000
+;"IconsOnly"=dword:00000000
+;"LastActiveClick"=dword:00000001
+;"LaunchTo"=dword:00000001
+;"ListviewAlphaSelect"=dword:00000001
+;"ListviewShadow"=dword:00000001
+;"MapNetDrvBtn"=dword:00000000
+;"NavPaneExpandToCurrentFolder"=dword:00000000
+;"NavPaneShowAllFolders"=dword:00000001
+;"OnboardUnpinCortana"=dword:00000001
+;"ReindexedProfile"=dword:00000001
+;"SeparateProcess"=dword:00000000
+;"ServerAdminUI"=dword:00000000
+;"ShowCortanaButton"=dword:00000000
+;"ShowEncryptCompressedColor"=dword:00000001
+;"ShowInfoTip"=dword:00000001
+;"ShowStatusBar"=dword:00000001
+;"ShowSuperHidden"=dword:00000001
+;"ShowTaskViewButton"=dword:00000000
+;"ShowTypeOverlay"=dword:00000001
+;"Start_SearchFiles"=dword:00000002
+;"Start_TrackDocs"=dword:00000001
+;"Start_TrackProgs"=dword:00000000
+;"StartMenuInit"=dword:0000000d
+;"StartMigratedBrowserPin"=dword:00000001
+;"StoreAppsOnTaskbar"=dword:00000001
+;"TaskbarAnimations"=dword:00000001
+;"TaskbarAutoHideInTabletMode"=dword:00000000
+;"TaskbarBadges"=dword:00000001
+;"TaskbarSizeMove"=dword:00000000
+;"TaskbarSmallIcons"=dword:00000000
+;"WebView"=dword:00000001
+
+; Disable "~/3D Objects"
+[-HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}]
+[-HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}]
+'@
+    Import-RegSettings $value
+}
+
+function Set-ConfigWindows {
+    <#
+    https://howtomanagedevices.com/windows-10/3654/how-to-disable-privacy-settings-experience-at-first-sign-in-in-windows-10/
+    #>
+    $value = @'
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock]
+"AllowDevelopmentWithoutDevLicense"=dword:00000001
+"AllowAllTrustedApps"=dword:00000001
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy]
+"TailoredExperiencesWithDiagnosticDataEnabled"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy]
+"HasAccepted"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo]
+"Enabled"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Internet Explorer\International]
+"AcceptLanguage"=-
+[HKEY_CURRENT_USER\Control Panel\International\User Profile]
+"HttpAcceptLanguageOptOut"=dword:00000001
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+"Start_TrackProgs"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager]
+"SubscribedContent-338393Enabled"=dword:00000000
+"SubscribedContent-353694Enabled"=dword:00000000
+"SubscribedContent-353696Enabled"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location]
+"Value"="Deny"
+
+'@
+    Import-RegSettings $value
+}
+
+function Set-ConfigKeyboard {
+    # https://superuser.com/questions/1264164/how-to-map-windows-key-to-ctrl-key-on-windows-10
+    $value = @'
+[HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Keyboard Layout]
+"Scancode Map"=hex:00,00,00,00,00,00,00,00,03,00,00,00,5B,E0,3A,00,1D,00,5B,E0,00,00,00,00
+'@
+    Import-RegSettings $value
+}
+
 function Get-Username {
     if ($env:userdomain -AND $env:username) {
         $me = "$($env:username)"
@@ -698,328 +1020,6 @@ function Show-WinrcUpdateNotice {
     $stagedAt = Get-Content -Raw -LiteralPath $notice
     Write-Host "`n[winrc] an update was staged ($stagedAt) and will be active in a new shell. Run 'Update-Winrc' to apply it now." -ForegroundColor Cyan
     Remove-Item -LiteralPath $notice -Force -ErrorAction SilentlyContinue
-}
-
-function Set-ConfigPowershell {
-    <#
-    Reverse Search
-    https://stackoverflow.com/a/62891313
-    #>
-    Set-PSReadLineOption -HistorySearchCursorMovesToEnd
-    Set-PSReadlineKeyHandler -Key UpArrow -Function HistorySearchBackward
-    Set-PSReadlineKeyHandler -Key DownArrow -Function HistorySearchForward
-    Set-PSReadlineKeyHandler -Key Tab -Function Complete
-}
-
-function Set-ConfigZoxide {
-    if (-Not (Test-IsWindows)) { return }
-    if (-Not (Get-Command zoxide -ErrorAction SilentlyContinue)) { return }
-    Invoke-Expression (& {
-            $hook = if ($PSVersionTable.PSVersion.Major -ge 6) {
-                'pwd'
-            }
-            else {
-                'prompt'
-            } (zoxide init powershell --hook $hook | Out-String)
-        })
-}
-
-function Set-ConfigNpm {
-    if (-Not (Test-IsWindows)) { return }
-    if (-Not (Get-Command npm -ErrorAction SilentlyContinue)) { return }
-    $file = "$home\.npmrc"
-    $config = @'
-; BEGIN_SHELLRC
-; https://docs.npmjs.com/cli/using-npm/config
-save-exact=true
-prefer-offline=true
-update-notifier=false
-fund=false
-long=true
-; END_SHELLRC
-'@
-    Set-ConfigSection -String $config -Path $file
-}
-
-function Set-ConfigGit {
-    if (-Not (Test-IsWindows)) { return }
-    if (-Not (Get-Command git -ErrorAction SilentlyContinue)) { return }
-    $file = "$home\.config\git\config"
-    $config = @'
-# BEGIN_SHELLRC
-[init]
-    defaultBranch = main
-
-[core]
-    autocrlf = true
-    eol = native
-    sshCommand = C:/Windows/System32/OpenSSH/ssh.exe
-    # https://git-scm.com/docs/git-config#Documentation/git-config.txt-corewhitespace
-    whitespace = space-before-tab,trailing-space
-    # https://git-scm.com/docs/git-config#Documentation/git-config.txt-corequotePath
-    quotepath = false
-    bigFileThreshold = 64m
-
-[safe]
-    directory = *
-
-[filter "lfs"]
-    clean = git-lfs clean -- %f
-    smudge = git-lfs smudge -- %f
-    process = git-lfs filter-process
-    required = true
-
-[merge]
-    # Include summaries of merged commits in newly created merge commit messages
-    log = true
-
-[credential]
-    helper = wincred
-
-[push]
-    default = simple
-
-[color]
-    ui = auto
-# END_SHELLRC
-'@
-    Set-ConfigSection -String $config -Path $file
-    $file = "$home\.config\git\ignore"
-    $config = @'
-# BEGIN_SHELLRC
-# Windows thumbnail cache files
-Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-
-# Dump file
-*.stackdump
-
-# Folder config file
-[Dd]esktop.ini
-
-# Recycle Bin used on file shares
-$RECYCLE.BIN/
-
-# Windows Installer files
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-
-# Windows shortcuts
-*.lnk
-# END_SHELLRC
-'@
-    Set-ConfigSection -String $config -Path $file
-    $file = "$home\.config\git\attributes"
-    $config = @'
-# BEGIN_SHELLRC
-
-# END_SHELLRC
-'@
-    Set-ConfigSection -String $config -Path $file
-}
-
-function Set-ConfigRhinoceros {
-    <#
-    # TODO
-    $hosts = [Environment]::SystemDirectory + '\drivers\etc\hosts'
-    #>
-}
-
-function Set-ConfigWSL1 {
-    <#
-    # TODO
-    #>
-}
-
-function Set-ConfigWSL2 {
-    <#
-    # TODO
-    #>
-}
-
-function Set-ConfigSSH {
-    if (-Not (Test-IsWindows)) { return }
-    if (-Not (Get-Command ssh -ErrorAction SilentlyContinue)) { return }
-    $file = "$home\.ssh\config"
-    $config = @'
-# BEGIN_SHELLRC
-
-Host *
-ServerAliveInterval 60
-ServerAliveCountMax 240
-Compression yes
-# CVE-2016-0777, CVE-2016-0778
-UseRoaming no
-IgnoreUnknown AddKeysToAgent,UseKeychain
-# Store passphrases in Keychain
-AddKeysToAgent yes
-UseKeychain yes
-
-# END_SHELLRC
-'@
-    Set-ConfigSection -String $config -Path $file
-}
-
-function Set-ConfigShareX {
-    # TODO
-    <#
-    $a = Get-Content 'D:\temp\mytest.json' -raw | ConvertFrom-Json
-    $a.update | % {if($_.name -eq 'test1'){$_.version=3.0}}
-    $a | ConvertTo-Json -depth 32| set-content 'D:\temp\mytestBis.json'
-    #>
-}
-
-function Set-ConfigCyberduck {
-    <#
-    TODO
-    C:\Users\tmslnz\AppData\Roaming\Cyberduck\Cyberduck.user.config
-
-    <setting name="update.check" value="false" />
-    <setting name="queue.window.open.default" value="false" />
-    <setting name="editor.alwaysusedefault" value="true" />
-    <setting name="editor.bundleidentifier" value="c:\program files\sublime text\sublime_text.exe" />
-    <setting name="browser.doubleclick.edit" value="true" />
-    <setting name="browser.enterkey.rename" value="true" />
-    <setting name="browser.move.confirm" value="false" />
-    <setting name="bookmark.toggle.options" value="true" />
-    #>
-    $Path = "$Home\AppData\Roaming\Cyberduck\Cyberduck.user.config"
-    if (! [System.IO.File]::Exists("$Path")) { return $false }
-    $xml = New-Object XML
-    $xml.Load("$Path")
-    $nodes = $xml.SelectNodes('//setting[@name="CdSettings"]/value/settings/setting')
-    $nodes
-}
-
-function Set-ConfigPowerToys {
-    <#
-    $ TODO
-    C:\Users\tmslnz\AppData\Local\Microsoft\PowerToys\Keyboard Manager
-    #>
-}
-
-function Set-ConfigExplorer {
-    # Make AppData folder visible
-    $appData = Split-Path $env:APPDATA -Parent
-    Set-ItemProperty -Path $appData -Name Attributes -Value Normal
-    # https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gppref/3c837e92-016e-4148-86e5-b4f0381a757f
-    $value = @'
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-
-; Show all file extensions
-"HideFileExt"=dword:00000000
-
-; Show hidden files
-"Hidden"=dword:00000002
-
-; Displays compressed and encrypted NTFS files in color
-"ShowCompColor"=dword:00000001
-
-; Do not change case of path elements
-"DontPrettyPath"=dword:00000001
-
-; Allow bottom-right hover to show Desktop
-"DisablePreviewDesktop"=dword:00000000
-
-; Group when full
-"TaskbarGlomLevel"=dword:00000001
-
-;"AlwaysShowMenus"=dword:00000001
-;"AutoCheckSelect"=dword:00000000
-;"DontUsePowerShellOnWinX"=dword:00000000
-;"ExtendedUIHoverTime"=dword:00000190
-;"Filter"=dword:00000000
-;"HideIcons"=dword:00000000
-;"HideMergeConflicts"=dword:00000000
-;"IconsOnly"=dword:00000000
-;"LastActiveClick"=dword:00000001
-;"LaunchTo"=dword:00000001
-;"ListviewAlphaSelect"=dword:00000001
-;"ListviewShadow"=dword:00000001
-;"MapNetDrvBtn"=dword:00000000
-;"NavPaneExpandToCurrentFolder"=dword:00000000
-;"NavPaneShowAllFolders"=dword:00000001
-;"OnboardUnpinCortana"=dword:00000001
-;"ReindexedProfile"=dword:00000001
-;"SeparateProcess"=dword:00000000
-;"ServerAdminUI"=dword:00000000
-;"ShowCortanaButton"=dword:00000000
-;"ShowEncryptCompressedColor"=dword:00000001
-;"ShowInfoTip"=dword:00000001
-;"ShowStatusBar"=dword:00000001
-;"ShowSuperHidden"=dword:00000001
-;"ShowTaskViewButton"=dword:00000000
-;"ShowTypeOverlay"=dword:00000001
-;"Start_SearchFiles"=dword:00000002
-;"Start_TrackDocs"=dword:00000001
-;"Start_TrackProgs"=dword:00000000
-;"StartMenuInit"=dword:0000000d
-;"StartMigratedBrowserPin"=dword:00000001
-;"StoreAppsOnTaskbar"=dword:00000001
-;"TaskbarAnimations"=dword:00000001
-;"TaskbarAutoHideInTabletMode"=dword:00000000
-;"TaskbarBadges"=dword:00000001
-;"TaskbarSizeMove"=dword:00000000
-;"TaskbarSmallIcons"=dword:00000000
-;"WebView"=dword:00000001
-
-; Disable "~/3D Objects"
-[-HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}]
-[-HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}]
-'@
-    Import-RegSettings $value
-}
-
-function Set-ConfigWindows {
-    <#
-    https://howtomanagedevices.com/windows-10/3654/how-to-disable-privacy-settings-experience-at-first-sign-in-in-windows-10/
-    #>
-    $value = @'
-[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock]
-"AllowDevelopmentWithoutDevLicense"=dword:00000001
-"AllowAllTrustedApps"=dword:00000001
-
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy]
-"TailoredExperiencesWithDiagnosticDataEnabled"=dword:00000000
-
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy]
-"HasAccepted"=dword:00000000
-
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo]
-"Enabled"=dword:00000000
-
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Internet Explorer\International]
-"AcceptLanguage"=-
-[HKEY_CURRENT_USER\Control Panel\International\User Profile]
-"HttpAcceptLanguageOptOut"=dword:00000001
-
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-"Start_TrackProgs"=dword:00000000
-
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager]
-"SubscribedContent-338393Enabled"=dword:00000000
-"SubscribedContent-353694Enabled"=dword:00000000
-"SubscribedContent-353696Enabled"=dword:00000000
-
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location]
-"Value"="Deny"
-
-'@
-    Import-RegSettings $value
-}
-
-function Set-ConfigKeyboard {
-    # https://superuser.com/questions/1264164/how-to-map-windows-key-to-ctrl-key-on-windows-10
-    $value = @'
-[HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Keyboard Layout]
-"Scancode Map"=hex:00,00,00,00,00,00,00,00,03,00,00,00,5B,E0,3A,00,1D,00,5B,E0,00,00,00,00
-'@
-    Import-RegSettings $value
 }
 
 function Disable-LogitechWebcamMicrophone {
