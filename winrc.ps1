@@ -1,6 +1,18 @@
 ﻿# Set-StrictMode -Version
 $progressPreference = 'SilentlyContinue'
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# PowerShell 7 and Windows PowerShell 5.1 both honor RemoteSigned, which lets a
+# freshly-downloaded winrc.ps1 run after the user approves it once. Attempt that in
+# the CurrentUser scope only, and only when the effective policy is not already
+# permissive. We deliberately never fail or warn here: when a more-specific scope
+# (group policy, or a -Bypass/-Unrestricted launch) overrides our request, the
+# running session is already able to execute this script, so there is nothing to fix.
+try {
+    if ((Get-ExecutionPolicy) -ne 'RemoteSigned' -and (Get-ExecutionPolicy) -ne 'Bypass' -and (Get-ExecutionPolicy) -ne 'Unrestricted') {
+        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -ErrorAction SilentlyContinue
+    }
+}
+catch { }
 
 $CachedAppsList = @()
 $WINRC_QUIET = $true
