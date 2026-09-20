@@ -31,6 +31,10 @@ $script:WinrcAutoCheckIntervalDays = 3
 # State file remembering the last time a check was performed.
 $script:WinrcStateFile = Join-Path $env:LOCALAPPDATA 'winrc\winrc.state.json'
 
+# =============================================================================
+# 1. ORCHESTRATION
+# =============================================================================
+
 function Main {
     Show-WinrcUpdateNotice
     $actions = @'
@@ -62,6 +66,10 @@ Set-ConfigPowerToys
         Start-WinrcUpdateCheck
     }
 }
+
+# =============================================================================
+# 5. TERMINAL PROMPT
+# =============================================================================
 
 function Get-GitPromptStatus {
     <#
@@ -172,6 +180,10 @@ function prompt {
     $suffix = $(if ($NestedPromptLevel -ge 1) { "$($PSStyle.Dim)$ $($PSStyle.Reset)" }) + "$($PSStyle.Dim)$([char]0x25CF)$($PSStyle.Reset) "
     "${prefix}${status}${who}${where}${gitSeg} ${suffix}"
 }
+
+# =============================================================================
+# 4. APP CONFIGURATION SETTERS
+# =============================================================================
 
 function Set-ConfigPowershell {
     <#
@@ -495,6 +507,10 @@ function Set-ConfigKeyboard {
     Import-RegSettings $value
 }
 
+# =============================================================================
+# 3. SHELLRC CONFIG-BLOCK HELPERS
+# =============================================================================
+
 function Set-ConfigSection {
     <#
     .SYNOPSIS
@@ -598,6 +614,7 @@ function Set-ConfigSection {
     return $true
 }
 
+# Backward-compatible aliases so any existing dot-sourced callers keep working.
 function New-ConfigSection {
     [CmdletBinding()]
     param([string]$String, [string]$Path, [switch]$Append, [switch]$Prepend)
@@ -608,6 +625,10 @@ function Update-ConfigSection {
     param([string]$String, [string]$Path)
     Set-ConfigSection -String $String -Path $Path
 }
+
+# =============================================================================
+# 2. SELF-UPDATE & PERIODIC AUTO-CHECK
+# =============================================================================
 
 function Update-Winrc {
     <#
@@ -884,6 +905,24 @@ function Show-WinrcUpdateNotice {
     Remove-Item -LiteralPath $notice -Force -ErrorAction SilentlyContinue
 }
 
+# =============================================================================
+# 6. PLATFORM & ENVIRONMENT HELPERS
+# =============================================================================
+
+# $PSStyle exists only on PowerShell 7.2+. On Windows PowerShell 5.1 we emulate the
+# small subset used here so every code path survives. Note: on 5.1 the terminal
+# may not understand the ANSI escapes; ANSICON/Windows Terminal handle them fine.
+if (-not (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
+    $PSStyle = @{
+        Bold         = "`e[1m"
+        Dim          = "`e[2m"
+        Underline    = "`e[4m"
+        Reset        = "`e[0m"
+        Foreground   = @{ Red = "`e[31m"; Green = "`e[32m"; Yellow = "`e[33m"; Cyan = "`e[36m" }
+        Background   = @{}
+    }
+}
+
 function Get-Username {
     if ($env:userdomain -AND $env:username) {
         $me = "$($env:username)"
@@ -1006,6 +1045,10 @@ function Import-RegSettings {
     }
     Remove-Item -Path "$tempFile"
 }
+
+# =============================================================================
+# 7. INSTALLERS & PROVISIONING
+# =============================================================================
 
 function Install-PowerShellProfile {
     <#
@@ -1393,21 +1436,10 @@ function Install-WindowsSandbox {
     Enable-WindowsOptionalFeature -FeatureName "Containers-DisposableClientVM" -All -Online
 }
 
-# $PSStyle exists only on PowerShell 7.2+. On Windows PowerShell 5.1 we emulate the
-# small subset used here so every code path survives. Note: on 5.1 the terminal
-# may not understand the ANSI escapes; ANSICON/Windows Terminal handle them fine.
-if (-not (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
-    $PSStyle = @{
-        Bold         = "`e[1m"
-        Dim          = "`e[2m"
-        Underline    = "`e[4m"
-        Reset        = "`e[0m"
-        Foreground   = @{ Red = "`e[31m"; Green = "`e[32m"; Yellow = "`e[33m"; Cyan = "`e[36m" }
-        Background   = @{}
-    }
-}
+# =============================================================================
+# 8. UTILITIES & DIAGNOSTICS
+# =============================================================================
 
-# Backward-compatible aliases so any existing dot-sourced callers keep working.
 function Disable-LogitechWebcamMicrophone {
     if (!(Test-IsWindows)) { return }
     gsudo Get-PnpDevice -Class AudioEndpoint -FriendlyName "*Logitech*" | Disable-PnpDevice -Confirm $false
