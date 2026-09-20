@@ -63,6 +63,116 @@ Set-ConfigPowerToys
     }
 }
 
+function Get-GitPromptStatus {
+    <#
+    .SYNOPSIS
+        Cheap, lazy git status for prompt use. Returns a small object with Branch
+        and Dirty, or $null when the current directory is not inside a git work tree.
+        Results are cached per working directory so the prompt only spawns git when
+        you actually change folders.
+    #>
+    param(
+        [switch]$NoCache
+    )
+    $here = (Get-Location).Path
+    if (-not $NoCache -and $script:GitPromptCache -and $script:GitPromptCache.Path -eq $here) {
+        return $script:GitPromptCache.Result
+    }
+
+    # Exit fast when git is not installed.
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        $script:GitPromptCache = @{ Path = $here; Result = $null }
+        return $null
+    }
+
+    try {
+        $gitDir = & git rev-parse --git-dir 2>$null
+        if (-not $gitDir) {
+            $script:GitPromptCache = @{ Path = $here; Result = $null }
+            return $null
+        }
+    }
+    catch {
+        $script:GitPromptCache = @{ Path = $here; Result = $null }
+        return $null
+    }
+
+    $branch = (& git symbolic-ref --quiet --short HEAD 2>$null)
+    if (-not $branch) {
+        # Detached HEAD: fall back to a short commit id.
+        $branch = (& git rev-parse --short HEAD 2>$null)
+    }
+
+    $dirty = $false
+    try {
+        $di = & git status --porcelain 2>$null
+        if ($di) { $dirty = $true }
+    }
+    catch { }
+
+    $result = [pscustomobject]@{ Branch = $branch; Dirty = $dirty }
+    $script:GitPromptCache = @{ Path = $here; Result = $result }
+    $result
+}
+
+function Get-ShortPath {
+    <#
+    .SYNOPSIS
+        Shorten a path for display. Replaces the $HOME prefix with '~' and collapses
+        the middle segments of long paths to an ellipsis, keeping the leaf component.
+    #>
+    param(
+        [string]$Path
+    )
+    $homePrefix = $HOME.TrimEnd('\', '/')
+    $p = $Path
+    if ($p.StartsWith($homePrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        $p = '~' + $p.Substring($homePrefix.Length)
+    }
+    # Allow a reasonably long path before we trim.
+    if ($p.Length -le 44) { return $p }
+    $parts = $p -split '[\\/]'
+    if ($parts.Count -lt 3) { return $p }
+    $head = $parts[0..1]
+    $tail = $parts[($parts.Count - 2)..($parts.Count - 1)]
+    ($head -join '/') + '/…/' + ($tail -join '/')
+}
+
+function prompt {
+    # Capture the previous command's exit code before doing any work.
+    $code = $global:LASTEXITCODE
+    $prefix = $(
+        if (Test-IsDebug) { '[DEBUG] ' }
+        elseif (Test-IsAdmin) { '[ADMIN] ' }
+        else { '' }
+    )
+    $user = $(Get-Username)
+    $hostname = [System.Net.Dns]::GetHostName()
+    $cwd = Get-ShortPath (Get-Location).Path
+
+    # Exit-code indicator: red ✘ with code on failure, dim ✓ on success.
+    if ($code -ne 0 -and $null -ne $code) {
+        $status = "$($PSStyle.Foreground.Red)$([char]0x2718) $code$($PSStyle.Reset) "
+    }
+    else {
+        $status = "$($PSStyle.Foreground.Green)$([char]0x2714)$($PSStyle.Reset) "
+    }
+
+    # Git segment (lazy).
+    $git = Get-GitPromptStatus
+    $gitSeg = ''
+    if ($git -and $git.Branch) {
+        $color = if ($git.Dirty) { $PSStyle.Foreground.Yellow } else { $PSStyle.Foreground.Cyan }
+        $mark  = if ($git.Dirty) { ' *' } else { '' }
+        $gitSeg = " $($PSStyle.Dim)($($PSStyle.Reset)$color$($git.Branch)$mark$($PSStyle.Reset)$($PSStyle.Dim))$($PSStyle.Reset)"
+    }
+
+    $who = "$($PSStyle.Bold)${user}@$($PSStyle.Dim)${hostname}$($PSStyle.Reset)"
+    $where = "$($PSStyle.Bold):$($PSStyle.Reset)${cwd}"
+    $suffix = $(if ($NestedPromptLevel -ge 1) { "$($PSStyle.Dim)$ $($PSStyle.Reset)" }) + "$($PSStyle.Dim)$([char]0x25CF)$($PSStyle.Reset) "
+    "${prefix}${status}${who}${where}${gitSeg} ${suffix}"
+}
+
 function Get-Username {
     if ($env:userdomain -AND $env:username) {
         $me = "$($env:username)"
@@ -313,116 +423,6 @@ function Update-ConfigSection {
     [CmdletBinding()]
     param([string]$String, [string]$Path)
     Set-ConfigSection -String $String -Path $Path
-}
-
-function Get-GitPromptStatus {
-    <#
-    .SYNOPSIS
-        Cheap, lazy git status for prompt use. Returns a small object with Branch
-        and Dirty, or $null when the current directory is not inside a git work tree.
-        Results are cached per working directory so the prompt only spawns git when
-        you actually change folders.
-    #>
-    param(
-        [switch]$NoCache
-    )
-    $here = (Get-Location).Path
-    if (-not $NoCache -and $script:GitPromptCache -and $script:GitPromptCache.Path -eq $here) {
-        return $script:GitPromptCache.Result
-    }
-
-    # Exit fast when git is not installed.
-    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-        $script:GitPromptCache = @{ Path = $here; Result = $null }
-        return $null
-    }
-
-    try {
-        $gitDir = & git rev-parse --git-dir 2>$null
-        if (-not $gitDir) {
-            $script:GitPromptCache = @{ Path = $here; Result = $null }
-            return $null
-        }
-    }
-    catch {
-        $script:GitPromptCache = @{ Path = $here; Result = $null }
-        return $null
-    }
-
-    $branch = (& git symbolic-ref --quiet --short HEAD 2>$null)
-    if (-not $branch) {
-        # Detached HEAD: fall back to a short commit id.
-        $branch = (& git rev-parse --short HEAD 2>$null)
-    }
-
-    $dirty = $false
-    try {
-        $di = & git status --porcelain 2>$null
-        if ($di) { $dirty = $true }
-    }
-    catch { }
-
-    $result = [pscustomobject]@{ Branch = $branch; Dirty = $dirty }
-    $script:GitPromptCache = @{ Path = $here; Result = $result }
-    $result
-}
-
-function Get-ShortPath {
-    <#
-    .SYNOPSIS
-        Shorten a path for display. Replaces the $HOME prefix with '~' and collapses
-        the middle segments of long paths to an ellipsis, keeping the leaf component.
-    #>
-    param(
-        [string]$Path
-    )
-    $homePrefix = $HOME.TrimEnd('\', '/')
-    $p = $Path
-    if ($p.StartsWith($homePrefix, [StringComparison]::OrdinalIgnoreCase)) {
-        $p = '~' + $p.Substring($homePrefix.Length)
-    }
-    # Allow a reasonably long path before we trim.
-    if ($p.Length -le 44) { return $p }
-    $parts = $p -split '[\\/]'
-    if ($parts.Count -lt 3) { return $p }
-    $head = $parts[0..1]
-    $tail = $parts[($parts.Count - 2)..($parts.Count - 1)]
-    ($head -join '/') + '/…/' + ($tail -join '/')
-}
-
-function prompt {
-    # Capture the previous command's exit code before doing any work.
-    $code = $global:LASTEXITCODE
-    $prefix = $(
-        if (Test-IsDebug) { '[DEBUG] ' }
-        elseif (Test-IsAdmin) { '[ADMIN] ' }
-        else { '' }
-    )
-    $user = $(Get-Username)
-    $hostname = [System.Net.Dns]::GetHostName()
-    $cwd = Get-ShortPath (Get-Location).Path
-
-    # Exit-code indicator: red ✘ with code on failure, dim ✓ on success.
-    if ($code -ne 0 -and $null -ne $code) {
-        $status = "$($PSStyle.Foreground.Red)$([char]0x2718) $code$($PSStyle.Reset) "
-    }
-    else {
-        $status = "$($PSStyle.Foreground.Green)$([char]0x2714)$($PSStyle.Reset) "
-    }
-
-    # Git segment (lazy).
-    $git = Get-GitPromptStatus
-    $gitSeg = ''
-    if ($git -and $git.Branch) {
-        $color = if ($git.Dirty) { $PSStyle.Foreground.Yellow } else { $PSStyle.Foreground.Cyan }
-        $mark  = if ($git.Dirty) { ' *' } else { '' }
-        $gitSeg = " $($PSStyle.Dim)($($PSStyle.Reset)$color$($git.Branch)$mark$($PSStyle.Reset)$($PSStyle.Dim))$($PSStyle.Reset)"
-    }
-
-    $who = "$($PSStyle.Bold)${user}@$($PSStyle.Dim)${hostname}$($PSStyle.Reset)"
-    $where = "$($PSStyle.Bold):$($PSStyle.Reset)${cwd}"
-    $suffix = $(if ($NestedPromptLevel -ge 1) { "$($PSStyle.Dim)$ $($PSStyle.Reset)" }) + "$($PSStyle.Dim)$([char]0x25CF)$($PSStyle.Reset) "
-    "${prefix}${status}${who}${where}${gitSeg} ${suffix}"
 }
 
 function Update-Winrc {
