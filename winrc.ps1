@@ -1007,26 +1007,6 @@ function Import-RegSettings {
     Remove-Item -Path "$tempFile"
 }
 
-# $PSStyle exists only on PowerShell 7.2+. On Windows PowerShell 5.1 we emulate the
-# small subset used here so every code path survives. Note: on 5.1 the terminal
-# may not understand the ANSI escapes; ANSICON/Windows Terminal handle them fine.
-if (-not (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
-    $PSStyle = @{
-        Bold         = "`e[1m"
-        Dim          = "`e[2m"
-        Underline    = "`e[4m"
-        Reset        = "`e[0m"
-        Foreground   = @{ Red = "`e[31m"; Green = "`e[32m"; Yellow = "`e[33m"; Cyan = "`e[36m" }
-        Background   = @{}
-    }
-}
-
-# Backward-compatible aliases so any existing dot-sourced callers keep working.
-function Disable-LogitechWebcamMicrophone {
-    if (!(Test-IsWindows)) { return }
-    gsudo Get-PnpDevice -Class AudioEndpoint -FriendlyName "*Logitech*" | Disable-PnpDevice -Confirm $false
-}
-
 function Install-PowerShellProfile {
     <#
     .SYNOPSIS
@@ -1411,6 +1391,26 @@ function Install-WindowsSandbox {
     https://learn.microsoft.com/en-us/windows/security/application-security/application-isolation/windows-sandbox/windows-sandbox-configure-using-wsb-file#networking
     #>
     Enable-WindowsOptionalFeature -FeatureName "Containers-DisposableClientVM" -All -Online
+}
+
+# $PSStyle exists only on PowerShell 7.2+. On Windows PowerShell 5.1 we emulate the
+# small subset used here so every code path survives. Note: on 5.1 the terminal
+# may not understand the ANSI escapes; ANSICON/Windows Terminal handle them fine.
+if (-not (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
+    $PSStyle = @{
+        Bold         = "`e[1m"
+        Dim          = "`e[2m"
+        Underline    = "`e[4m"
+        Reset        = "`e[0m"
+        Foreground   = @{ Red = "`e[31m"; Green = "`e[32m"; Yellow = "`e[33m"; Cyan = "`e[36m" }
+        Background   = @{}
+    }
+}
+
+# Backward-compatible aliases so any existing dot-sourced callers keep working.
+function Disable-LogitechWebcamMicrophone {
+    if (!(Test-IsWindows)) { return }
+    gsudo Get-PnpDevice -Class AudioEndpoint -FriendlyName "*Logitech*" | Disable-PnpDevice -Confirm $false
 }
 
 function Uninstall-Crap {
