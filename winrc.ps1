@@ -925,12 +925,17 @@ function Show-WinrcUpdateNotice {
 # small subset used here so every code path survives. Note: on 5.1 the terminal
 # may not understand the ANSI escapes; ANSICON/Windows Terminal handle them fine.
 if (-not (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
+    # `e (ESC) is a valid escape only on PowerShell 6+. On 5.1 that backtick
+    # sequence degrades to the literal text `e[..m`, which is exactly the "literal
+    # escape characters" prompt bug. Build the ESC byte explicitly so the ANSI
+    # codes are interpreted by Windows Terminal / ANSICON on every engine.
+    $esc = [char]27
     $PSStyle = @{
-        Bold       = "`e[1m"
-        Dim        = "`e[2m"
-        Underline  = "`e[4m"
-        Reset      = "`e[0m"
-        Foreground = @{ Red = "`e[31m"; Green = "`e[32m"; Yellow = "`e[33m"; Cyan = "`e[36m" }
+        Bold       = "${esc}[1m"
+        Dim        = "${esc}[2m"
+        Underline  = "${esc}[4m"
+        Reset      = "${esc}[0m"
+        Foreground = @{ Red = "${esc}[31m"; Green = "${esc}[32m"; Yellow = "${esc}[33m"; Cyan = "${esc}[36m" }
         Background = @{}
     }
 }
