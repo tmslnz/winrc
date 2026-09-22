@@ -1122,23 +1122,23 @@ function Install-PowerShellProfile {
     )
 
     $changed = $false
-    foreach ($profile in $profiles) {
+    foreach ($profilePath in $profiles) {
         # Back up an existing profile only when we are about to insert a SHELLRC
         # section for the first time (i.e. it exists, has content, and no fence yet).
-        if ([IO.File]::Exists($profile)) {
-            if (-not (Get-Content -Raw -Path $profile -ErrorAction SilentlyContinue |
+        if ([IO.File]::Exists($profilePath)) {
+            if (-not (Get-Content -Raw -Path $profilePath -ErrorAction SilentlyContinue |
                     Select-String -Pattern 'BEGIN_SHELLRC' -Quiet -ErrorAction SilentlyContinue)) {
-                $info = [IO.FileInfo]::new($profile)
+                $info = [IO.FileInfo]::new($profilePath)
                 $ts = Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
                 $dest = Join-Path -Path $info.DirectoryName -ChildPath "${info.BaseName}_backup_${ts}${info.Extension}"
-                Copy-Item -Path $profile -Destination $dest -ErrorAction SilentlyContinue
-                Write-Information -MessageData "winrc: backed up $profile -> $dest" -InformationAction Continue
+                Copy-Item -Path $profilePath -Destination $dest -ErrorAction SilentlyContinue
+                Write-Information -MessageData "winrc: backed up $profilePath -> $dest" -InformationAction Continue
             }
         }
         # Set-ConfigSection is compare-based and returns $true only when it writes.
-        if (Set-ConfigSection -String $Content -Path $profile) {
+        if (Set-ConfigSection -String $Content -Path $profilePath) {
             $changed = $true
-            Write-Information -MessageData "winrc: wrote loader to $profile" -InformationAction Continue
+            Write-Information -MessageData "winrc: wrote loader to $profilePath" -InformationAction Continue
         }
     }
 
