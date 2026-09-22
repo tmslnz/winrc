@@ -627,18 +627,6 @@ function Set-ConfigSection {
     return $true
 }
 
-# Backward-compatible aliases so any existing dot-sourced callers keep working.
-function New-ConfigSection {
-    [CmdletBinding()]
-    param([string]$String, [string]$Path, [switch]$Append, [switch]$Prepend)
-    Set-ConfigSection -String $String -Path $Path -Append:$Append
-}
-function Update-ConfigSection {
-    [CmdletBinding()]
-    param([string]$String, [string]$Path)
-    Set-ConfigSection -String $String -Path $Path
-}
-
 # =============================================================================
 # 2. SELF-UPDATE & PERIODIC AUTO-CHECK
 # =============================================================================
