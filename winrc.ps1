@@ -682,7 +682,6 @@ function Update-Winrc {
         [string]$Source = $script:WinrcUpdateSource
     )
     $ErrorActionPreference = 'Stop'
-    $repo = $script:WinrcRepo
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
     $remote = $null
