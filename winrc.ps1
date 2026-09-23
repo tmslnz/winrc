@@ -1460,23 +1460,6 @@ function Install-SyncthingService {
     Import-RegSettings $value
 }
 
-function Install-Winget {
-    <#
-    .SYNOPSIS
-    https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox
-    #>
-    if (!(Test-IsWindows)) { return }
-    $progressPreference = 'silentlyContinue'
-    $tmp_dir = New-TemporaryDirectory
-    Write-Information "Downloading WinGet and its dependencies..."
-    Invoke-WebRequest -Uri 'https://aka.ms/getwinget' -OutFile "${tmp_dir}\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-    Invoke-WebRequest -Uri 'https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx' -OutFile "${tmp_dir}\Microsoft.VCLibs.x64.14.00.Desktop.appx"
-    Invoke-WebRequest -Uri 'https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx' -OutFile "${tmp_dir}\Microsoft.UI.Xaml.2.8.x64.appx"
-    Add-AppxPackage "${tmp_dir}\Microsoft.VCLibs.x64.14.00.Desktop.appx"
-    Add-AppxPackage "${tmp_dir}\Microsoft.UI.Xaml.2.8.x64.appx"
-    Add-AppxPackage "${tmp_dir}\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-}
-
 function Install-WindowsSandbox {
     <#
     # TODO
