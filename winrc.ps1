@@ -370,15 +370,6 @@ UseKeychain yes
     Set-ConfigSection -String $config -Path $file
 }
 
-function Set-ConfigShareX {
-    # TODO
-    <#
-    $a = Get-Content 'D:\temp\mytest.json' -raw | ConvertFrom-Json
-    $a.update | % {if($_.name -eq 'test1'){$_.version=3.0}}
-    $a | ConvertTo-Json -depth 32| set-content 'D:\temp\mytestBis.json'
-    #>
-}
-
 function Set-ConfigCyberduck {
     <#
     TODO
@@ -632,18 +623,6 @@ function Set-ConfigSection {
     }
     [IO.File]::WriteAllText($Path, $new, [Text.UTF8Encoding]::new($false))
     return $true
-}
-
-# Backward-compatible aliases so any existing dot-sourced callers keep working.
-function New-ConfigSection {
-    [CmdletBinding()]
-    param([string]$String, [string]$Path, [switch]$Append, [switch]$Prepend)
-    Set-ConfigSection -String $String -Path $Path -Append:$Append
-}
-function Update-ConfigSection {
-    [CmdletBinding()]
-    param([string]$String, [string]$Path)
-    Set-ConfigSection -String $String -Path $Path
 }
 
 # =============================================================================
