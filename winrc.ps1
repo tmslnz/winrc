@@ -1216,22 +1216,29 @@ function Install-ScoopApps {
 
     # CLI apps
     $list = @'
+1password-cli
+bitwarden-cli
 docker
 docker-buildx
 everything-cli
 fd
 ffmpeg
 fzf
+gallery-dl
 handbrake-cli
 iperf3
 mariadb
 msys2
 nmap
-ntop
 nodejs-lts
+ntop
+pandoc
+qpdf
 rclone
+shellcheck
 sqlite
 which
+yt-dlp
 zoxide
 '@ -Split "`r?`n"
     scoop install @list
@@ -1263,93 +1270,6 @@ extras/synctrayzor
 extras/treesize-free
 extras/vlc
 extras/winaero-tweaker
-nirsoft/registrychangesview
-nirsoft/searchmyfiles
-nonportable/zadig-np
-'@ -Split "`r?`n"
-    scoop install @list
-}
-
-function Install-ScoopAppsExtra {
-    if (-Not (Get-Command scoop -ErrorAction SilentlyContinue)) {
-        Install-Scoop
-    }
-
-    # Buckets
-    scoop bucket add extras
-    scoop bucket add versions
-    scoop bucket add nirsoft
-    scoop bucket add java
-    scoop bucket add nonportable
-
-    # CLI apps
-    $list = @'
-1password-cli
-bitwarden-cli
-docker
-docker-buildx
-everything-cli
-fd
-ffmpeg
-fzf
-gallery-dl
-handbrake-cli
-iperf3
-mariadb
-msys2
-nmap
-ntop
-nodejs-lts
-pandoc
-qpdf
-rclone
-shellcheck
-sqlite
-which
-yt-dlp
-zoxide
-'@ -Split "`r?`n"
-    scoop install @list
-
-    # GUI
-    $list = @'
-cygwin
-extras/advanced-ip-scanner
-extras/audacity
-extras/bleachbit
-extras/blender
-extras/bulk-crap-uninstaller
-extras/cpu-z
-extras/cyberduck
-extras/dupeguru
-extras/everything
-extras/f3d
-extras/ghostwriter
-extras/gpu-z
-extras/handbrake
-extras/heidisql
-extras/inkscape
-extras/kdiff3
-extras/krita
-extras/logseq
-extras/losslesscut
-extras/msedgeredirect
-extras/obs-studio
-extras/opentabletdriver
-extras/pureref
-extras/rapidee
-extras/renamer
-extras/sharex
-extras/sharpkeys
-extras/simplenote
-extras/sqlitestudio
-extras/sumatrapdf
-extras/synctrayzor
-extras/treesize-free
-extras/vlc
-extras/winaero-tweaker
-extras/xnconvert
-extras/xnviewmp
 nirsoft/registrychangesview
 nirsoft/searchmyfiles
 nonportable/zadig-np
