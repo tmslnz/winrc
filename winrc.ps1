@@ -173,19 +173,17 @@ function prompt {
     $user = $(Get-Username)
     $hostname = [System.Net.Dns]::GetHostName()
     $cwd = Get-ShortPath (Get-Location).Path
-
-    # Exit-code indicator: red ✘ with code on failure, green ✓ on success.
+    # Exit-code indicator: red (code) on failure, nothing on success.
     if (-not $ok) {
-        # Show the numeric code when we have one, otherwise an undifferentiated ✘.
         if ($null -ne $code -and $code -ne 0) {
-            $status = "$($PSStyle.Foreground.Red)$([char]0x2718) $code$($PSStyle.Reset) "
+            $status = "$($PSStyle.Foreground.Red)($code)$($PSStyle.Reset) "
         }
         else {
-            $status = "$($PSStyle.Foreground.Red)$([char]0x2718)$($PSStyle.Reset) "
+            $status = ""
         }
     }
     else {
-        $status = "$($PSStyle.Foreground.Green)$([char]0x2714)$($PSStyle.Reset) "
+        $status = ""
     }
 
     # Git segment (lazy).
