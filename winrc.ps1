@@ -782,22 +782,44 @@ function Read-WinrcState {
     try {
         if ([IO.File]::Exists($script:WinrcStateFile)) {
             $j = Get-Content -Raw -Path $script:WinrcStateFile | ConvertFrom-Json
-            if ($j) { return $j }
+            if ($j) {
+                # Tolerate state written by an older version that predates a field.
+                if ($null -eq $j.PSObject.Properties['LastConfiguredHash']) {
+                    $j | Add-Member -NotePropertyName LastConfiguredHash -NotePropertyValue $null -Force
+                }
+                return $j
+            }
         }
     }
     catch { }
-    [pscustomobject]@{ LastCheckUtc = $null }
+    [pscustomobject]@{ LastCheckUtc = $null; LastConfiguredHash = $null }
 }
 
 function Write-WinrcState {
     param(
         [AllowNull()]
-        [datetime]$LastCheckUtc
+        [datetime]$LastCheckUtc,
+        [AllowNull()]
+        [string]$LastConfiguredHash
     )
     try {
         $dir = Split-Path -Parent $script:WinrcStateFile
         if ($dir) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        $obj = [pscustomobject]@{ LastCheckUtc = $LastCheckUtc }
+        # Merge with any existing state so writing one field never clobbers the other.
+        $existing = Read-WinrcState
+        if ($PSBoundParameters.ContainsKey('LastCheckUtc')) {
+            $checkUtc = $LastCheckUtc
+        }
+        else {
+            $checkUtc = $existing.LastCheckUtc
+        }
+        if ($PSBoundParameters.ContainsKey('LastConfiguredHash')) {
+            $configuredHash = $LastConfiguredHash
+        }
+        else {
+            $configuredHash = $existing.LastConfiguredHash
+        }
+        $obj = [pscustomobject]@{ LastCheckUtc = $checkUtc; LastConfiguredHash = $configuredHash }
         $obj | ConvertTo-Json | Set-Content -Path $script:WinrcStateFile -Encoding UTF8
     }
     catch { }
