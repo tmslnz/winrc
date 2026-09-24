@@ -73,15 +73,17 @@ function Invoke-WinrcConfigure {
         setters here (never to Main) so they are re-applied automatically on update.
         Per-session work (PSReadLine tuning, the zoxide hook) stays in Main.
     #>
-    Install-PowerShellProfile
-    Set-ConfigSSH
-    Set-ConfigWSL1
-    Set-ConfigWSL2
-    Set-ConfigNpm
-    Set-ConfigGit
-    Set-ConfigRhinoceros
-    Set-ConfigCyberduck
-    Set-ConfigPowerToys
+    # Each setter can emit Set-ConfigSection's success-stream boolean; consume it so
+    # a configure pass never leaks values into the pipeline (host/info output stays).
+    Install-PowerShellProfile | Out-Null
+    Set-ConfigSSH | Out-Null
+    Set-ConfigWSL1 | Out-Null
+    Set-ConfigWSL2 | Out-Null
+    Set-ConfigNpm | Out-Null
+    Set-ConfigGit | Out-Null
+    Set-ConfigRhinoceros | Out-Null
+    Set-ConfigCyberduck | Out-Null
+    Set-ConfigPowerToys | Out-Null
 }
 
 function Invoke-WinrcConfigureIfNeeded {
