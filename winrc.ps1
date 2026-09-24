@@ -15,7 +15,6 @@ try {
 catch { }
 
 $CachedAppsList = @()
-$WINRC_QUIET = $true
 
 # --- Self-update configuration -------------------------------------------------
 # Where this script was loaded from (needed to replace it in place on update).
@@ -49,29 +48,13 @@ $script:WinrcStateFile = Join-Path $env:LOCALAPPDATA 'winrc\winrc.state.json'
 
 function Main {
     Show-WinrcUpdateNotice
-    $actions = @'
-Install-PowerShellProfile
-Set-ConfigPowershell
-Set-ConfigSSH
-Set-ConfigWSL1
-Set-ConfigWSL2
-Set-ConfigNpm
-Set-ConfigZoxide
-Set-ConfigGit
-Set-ConfigRhinoceros
-Set-ConfigCyberduck
-Set-ConfigPowerToys
-'@
-    $actions.Replace("`r`n", "`n").Split("`n") | ForEach-Object -Process {
-        if ($WINRC_QUIET) {
-            $command = [Scriptblock]::Create("$_ > `$null")
-        }
-        else {
-            $command = [Scriptblock]::Create("$_")
-            Write-Host $command
-        }
-        Invoke-Command -ScriptBlock $command
-    }
+    # Per-session only: PSReadLine options and the zoxide hook do not persist, so
+    # they must be applied on every shell.
+    Set-ConfigPowershell
+    Set-ConfigZoxide
+    # Persistent file config is hash-gated: it re-applies only when winrc.ps1
+    # changes (self-update, git pull, or a manual edit), not on every shell.
+    Invoke-WinrcConfigureIfNeeded
     # Background periodic update check, only when this is a real interactive shell
     # (e.g. a profile load), not when the file is run standalone or via Update-Winrc.
     if ($script:WinrcAutoCheck -and [Environment]::UserInteractive -and $Host.Name -notmatch 'Server|NonInteractive') {
