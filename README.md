@@ -14,8 +14,10 @@ fenced config blocks for the tools you use, and can self-update from this repo.
    ```
 
    This runs `Main`, which installs/updates your PowerShell profile (backing up an
-   existing one), applies PSReadLine tuning, and writes the fenced config sections
-   described below. Running it again is safe — every step is idempotent.
+   existing one), applies PSReadLine tuning, and — on this first run — writes the
+   fenced config sections described below. Running it again is safe: every step is
+   idempotent, and the config sections are only re-applied when `winrc.ps1` changes
+   (see [When config sections are applied](#when-config-sections-are-applied)).
 
 Once installed, your `$PROFILE` contains a `BEGIN_SHELLRC`/`END_SHELLRC` fenced block that
 dot-sources `winrc.ps1` on every new terminal, so the functions below are available in
@@ -91,6 +93,31 @@ calls `Set-ConfigSection`.
 
 > Note: the old `New-ConfigSection` / `Update-ConfigSection` are kept as thin aliases of
 > `Set-ConfigSection` so previously dot-sourced callers still work.
+
+## When config sections are applied
+
+The config setters are the repository of each tool's parameters, but they are **not**
+run on every shell — that would make profile loading slow. Instead, `Main` calls
+`Invoke-WinrcConfigureIfNeeded`, which hashes `winrc.ps1` (content plus its path) and
+runs `Invoke-WinrcConfigure` only when the hash differs from the one stored in
+`%LOCALAPPDATA%\winrc\winrc.state.json`. So the sections are re-applied exactly once
+whenever `winrc.ps1` changes:
+
+- `Update-Winrc` (interactive or the background updater),
+- `git pull` in the dotfiles repo,
+- or a manual edit of `winrc.ps1`.
+
+Because the hash includes the script's path, moving or renaming the repo also triggers
+a re-run, which re-points the profile loader at the new location.
+
+Per-session-only work stays in `Main`: the PSReadLine tuning and the zoxide hook are
+re-applied on every shell (they do not persist to disk).
+
+To force a re-apply without editing the file:
+
+```powershell
+Invoke-WinrcConfigureIfNeeded -Force   # or Invoke-WinrcConfigure to run the setters
+```
 
 ## Platform notes
 
