@@ -79,6 +79,57 @@ Set-ConfigPowerToys
     }
 }
 
+function Invoke-WinrcConfigure {
+    <#
+    .SYNOPSIS
+        Applies every persistent, file-based config section (the Set-Config* functions).
+    .DESCRIPTION
+        This is the single registry of per-tool configuration parameters. It is kept
+        off the per-shell hot path: Main calls Invoke-WinrcConfigureIfNeeded instead,
+        which runs this only when winrc.ps1 has changed. Add new *persistent* config
+        setters here (never to Main) so they are re-applied automatically on update.
+        Per-session work (PSReadLine tuning, the zoxide hook) stays in Main.
+    #>
+    Install-PowerShellProfile
+    Set-ConfigSSH
+    Set-ConfigWSL1
+    Set-ConfigWSL2
+    Set-ConfigNpm
+    Set-ConfigGit
+    Set-ConfigRhinoceros
+    Set-ConfigCyberduck
+    Set-ConfigPowerToys
+}
+
+function Invoke-WinrcConfigureIfNeeded {
+    <#
+    .SYNOPSIS
+        Runs Invoke-WinrcConfigure only when the running script differs from the
+        version whose configuration was last applied.
+    .DESCRIPTION
+        Hashes winrc.ps1 (content plus its resolved path) and compares it to the hash
+        stored in the state file. Any change to the file - via Update-Winrc, the
+        background updater, a git pull, or a manual edit - therefore re-applies the
+        configuration exactly once. Including the path in the hash means a moved or
+        renamed repo re-points the profile loader too.
+    .PARAMETER Force
+        Re-apply the configuration even when the hash matches.
+    #>
+    param(
+        [switch]$Force
+    )
+    # Nothing to hash when running without a real file (e.g. pasted into a session).
+    if (-not $script:WinrcSourcePath -or -not [IO.File]::Exists($script:WinrcSourcePath)) { return }
+    $content = [IO.File]::ReadAllText($script:WinrcSourcePath)
+    $key = Get-FileHashValue -InputObject ($script:WinrcSourcePath + "`n" + $content)
+    if (-not $Force) {
+        $state = Read-WinrcState
+        if ($state.LastConfiguredHash -eq $key) { return }
+    }
+    Invoke-WinrcConfigure
+    Write-WinrcState -LastConfiguredHash $key
+}
+
 # =============================================================================
 # 5. TERMINAL PROMPT
 # =============================================================================
