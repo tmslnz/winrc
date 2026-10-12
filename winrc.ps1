@@ -781,13 +781,17 @@ function Get-WinrcRemoteContent {
             throw "Latest release '$($release.tag_name)' has no 'winrc.ps1' asset."
         }
         $content = Invoke-WebRequest -Uri $asset.browser_download_url -UseBasicParsing -ErrorAction Stop
-        return @{ Content = $content.Content; Hash = Get-FileHashValue -InputObject $content.Content }
+        # GitHub serves LF; normalize to CRLF so the on-disk file matches a Windows
+        # checkout (avoids Git seeing the file as dirty) and hashes stay consistent.
+        $text = [regex]::Replace([string]$content.Content, "\r?\n", "`r`n")
+        return @{ Content = $text; Hash = Get-FileHashValue -InputObject $text }
     }
     else {
         $branch = $script:WinrcBranch
         $url = "https://raw.githubusercontent.com/$repo/$branch/winrc.ps1"
         $content = Invoke-WebRequest -Uri $url -UseBasicParsing -ErrorAction Stop
-        return @{ Content = $content.Content; Hash = Get-FileHashValue -InputObject $content.Content }
+        $text = [regex]::Replace([string]$content.Content, "\r?\n", "`r`n")
+        return @{ Content = $text; Hash = Get-FileHashValue -InputObject $text }
     }
 }
 
@@ -921,6 +925,9 @@ function Start-WinrcUpdateCheck {
                 $remote = (Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 10).Content
             }
             catch { return }   # offline / transient -> silently skip
+            # GitHub serves LF; normalize to CRLF so the comparison and the staged
+            # file match a Windows checkout.
+            $remote = [regex]::Replace([string]$remote, "\r?\n", "`r`n")
 
             if (-not (Test-Path $srcPath)) { return }
             $current = [IO.File]::ReadAllText($srcPath)
