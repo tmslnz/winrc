@@ -255,13 +255,15 @@ function Set-ConfigPowershell {
 function Set-ConfigZoxide {
     if (-Not (Test-IsWindows)) { return }
     if (-Not (Get-Command zoxide -ErrorAction SilentlyContinue)) { return }
+    # `--cmd cd` aliases cd/cdi to zoxide's jump functions, so cd keeps normal
+    # Set-Location semantics for real paths and adds zoxide's smart-jump for queries.
     Invoke-Expression (& {
             $hook = if ($PSVersionTable.PSVersion.Major -ge 6) {
                 'pwd'
             }
             else {
                 'prompt'
-            } (zoxide init powershell --hook $hook | Out-String)
+            } (zoxide init powershell --hook $hook --cmd cd | Out-String)
         })
 }
 

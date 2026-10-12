@@ -35,6 +35,10 @@ The `prompt` function is a colorful, informative prompt that shows:
 `Set-ConfigPowershell` configures PSReadLine:
 reverse/forward history search on the arrow keys and Tab completion.
 
+When `zoxide` is installed, the per-session zoxide hook wires `cd`/`cdi` straight into
+zoxide: `cd` still behaves like `Set-Location` for real paths, but a keyword jumps to the
+matching frecency-ranked directory.
+
 ## Self-update
 
 `Update-Winrc` pulls the latest `winrc.ps1` from GitHub and, when it differs, atomically
