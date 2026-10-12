@@ -369,6 +369,45 @@ function Set-ConfigRhinoceros {
     # TODO
     $hosts = [Environment]::SystemDirectory + '\drivers\etc\hosts'
     #>
+    if (-Not (Test-IsWindows)) { return }
+    # Expose Rhino's command-line tools (yak, rhino, ...) on PATH so they resolve by
+    # name. Rhino installs into a versioned directory, so probe for the newest one.
+    $system = Get-ChildItem -Path 'C:\Program Files\Rhino *\System' -Directory -ErrorAction SilentlyContinue |
+        Where-Object { [IO.File]::Exists((Join-Path $_.FullName 'yak.exe')) } |
+        Sort-Object { [int]([regex]::Match($_.FullName, 'Rhino (\d+)').Groups[1].Value) } -Descending |
+        Select-Object -First 1
+    if (-not $system) { return }
+    $dir = $system.FullName
+
+    # Add the directory to the persistent user PATH via the official API, which
+    # stores it in HKCU\Environment and broadcasts WM_SETTINGCHANGE so Explorer (and
+    # the shells it launches) pick it up. The API writes REG_SZ, which is *not*
+    # expanded, so hand it the expanded form; then restore the canonical unexpanded
+    # value with its original kind so an ExpandString PATH keeps expanding
+    # %USERPROFILE% and friends on later reads.
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
+    if (-not $key) { return }
+    try {
+        $current = [string]$key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+        $parts = @($current -split ';' | Where-Object { $_ -ne '' })
+        if ($parts -contains $dir) { return }
+        $kind = if ($key.GetValueNames() -contains 'Path') { $key.GetValueKind('Path') } else { [Microsoft.Win32.RegistryValueKind]::ExpandString }
+        $updated = (@($dir) + $parts) -join ';'
+
+        [Environment]::SetEnvironmentVariable('Path', [Environment]::ExpandEnvironmentVariables($updated), 'User')
+
+        if ($kind -ne [Microsoft.Win32.RegistryValueKind]::String) {
+            $key.SetValue('Path', $updated, $kind)
+        }
+
+        if (($env:PATH -split ';') -notcontains $dir) {
+            $env:PATH = "$dir;$env:PATH"
+        }
+        return $true
+    }
+    finally {
+        $key.Close()
+    }
 }
 
 function Set-ConfigWSL1 {

@@ -91,6 +91,10 @@ Built-in config setters currently cover **npm**, **git** (config/ignore/attribut
 **ssh**, and the **PowerShell profile** itself. Add more by writing a small function that
 calls `Set-ConfigSection`.
 
+`Set-ConfigRhinoceros` is the exception: it adds Rhino's `System` directory to the
+persistent user `PATH` (so `yak` and friends resolve by name) rather than writing a config
+file.
+
 > Note: the old `New-ConfigSection` / `Update-ConfigSection` are kept as thin aliases of
 > `Set-ConfigSection` so previously dot-sourced callers still work.
 
