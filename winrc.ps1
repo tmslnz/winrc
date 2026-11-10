@@ -399,19 +399,9 @@ function Set-ConfigMise {
     # mise's activation assumes it runs at profile (global) scope. It marks its hooks
     # global:, but not the `mise` wrapper function that makes `mise shell` / `mise
     # deactivate` work, so running it here would drop that wrapper on return. Rather
-    # than promote it by name, promote every function the activation left in this
-    # scope, so helpers added by future mise releases survive too.
-    $before = @{}
-    Get-ChildItem -Path Function: | ForEach-Object { $before[$_.Name] = $_.ScriptBlock }
-    (& $exe.Source activate pwsh) | Out-String | Invoke-Expression
-    foreach ($fn in Get-ChildItem -Path Function:) {
-        # Unchanged by the activation: not ours to touch.
-        if ([object]::ReferenceEquals($before[$fn.Name], $fn.ScriptBlock)) { continue }
-        # Already global (mise declared it global:): nothing to promote.
-        $global = Get-Item -Path "Function:\global:$($fn.Name)" -ErrorAction SilentlyContinue
-        if ($global -and [object]::ReferenceEquals($global.ScriptBlock, $fn.ScriptBlock)) { continue }
-        Set-Item -Path "Function:\global:$($fn.Name)" -Value $fn.ScriptBlock
-    }
+    # than promote it by name, promote every function the activation defines, so
+    # helpers added by future mise releases survive too.
+    Invoke-WithGlobalFunctions { (& $exe.Source activate pwsh) | Out-String | Invoke-Expression }
 }
 
 function Set-ConfigZoxide {
@@ -878,6 +868,8 @@ function Update-Winrc {
         copy (by content hash). If identical, reports "already up to date". If
         different, atomically replaces the file on disk and reloads it into this
         session so the new version takes effect immediately (no shell restart).
+        The reload promotes every function the new file defines to global scope, so
+        it works the same when this is called from inside another function.
     .PARAMETER Force
         Force a re-download and reload even if the on-disk hash matches the remote.
     .PARAMETER CheckOnly
@@ -956,8 +948,11 @@ function Update-Winrc {
 
     Write-Host "winrc updated ($($currentHash.Substring(0,8)) -> $($remote.Hash.Substring(0,8))). Reloading..." -ForegroundColor Cyan
 
-    # Reload into this session so the new code is live right away.
-    . $script:WinrcSourcePath
+    # Reload into this session so the new code is live right away. A plain dot-source
+    # here would define the new functions in a function scope (this one, plus any
+    # caller's) and drop them on return, leaving the session on the old definitions,
+    # so every function the reload defines is promoted to global scope.
+    Invoke-WithGlobalFunctions { . $script:WinrcSourcePath }
 }
 
 function Get-WinrcRemoteContent {
@@ -1191,6 +1186,47 @@ if (-not (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue)) {
         Reset      = "${esc}[0m"
         Foreground = @{ Red = "${esc}[31m"; Green = "${esc}[32m"; Yellow = "${esc}[33m"; Cyan = "${esc}[36m" }
         Background = @{}
+    }
+}
+
+function Invoke-WithGlobalFunctions {
+    <#
+    .SYNOPSIS
+        Runs a script block and makes every function it defines global.
+    .DESCRIPTION
+        Code that expects to run at profile (global) scope - a dot-sourced script,
+        `mise activate` - defines its functions in whatever scope runs it. Run from
+        inside a function, those definitions vanish when that function returns. This
+        runs the block in its own scope, then copies every function the block defined
+        or redefined to global scope. Functions the block already declared global: are
+        left alone, as are functions it did not touch. Functions are promoted even when
+        the block throws part-way, so a reload whose Main fails still installs the new code.
+        Only functions are promoted; plain (unscoped) variables and aliases the block
+        sets stay local to this call.
+    .PARAMETER ScriptBlock
+        The code to run. It is dot-sourced into this function's scope, so it still
+        sees the caller's variables.
+    #>
+    param(
+        [Parameter(Mandatory = $true, Position = 0)]
+        [scriptblock]$ScriptBlock
+    )
+    # The block shares this scope, hence the unlikely variable names.
+    $__winrcBefore = @{}
+    Get-ChildItem -Path Function: | ForEach-Object { $__winrcBefore[$_.Name] = $_.ScriptBlock }
+    try {
+        . $ScriptBlock
+    }
+    finally {
+        foreach ($__winrcFn in Get-ChildItem -Path Function:) {
+            # Unchanged by the block: not ours to touch.
+            if ([object]::ReferenceEquals($__winrcBefore[$__winrcFn.Name], $__winrcFn.ScriptBlock)) { continue }
+            # Already global (the block declared it global:): nothing to promote.
+            # (Get-Item cannot resolve a global:-qualified function path; Get-Content can.)
+            $__winrcGlobal = Get-Content -LiteralPath "Function:\global:$($__winrcFn.Name)" -ErrorAction SilentlyContinue
+            if ([object]::ReferenceEquals($__winrcGlobal, $__winrcFn.ScriptBlock)) { continue }
+            Set-Item -LiteralPath "Function:\global:$($__winrcFn.Name)" -Value $__winrcFn.ScriptBlock
+        }
     }
 }
 

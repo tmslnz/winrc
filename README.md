@@ -66,6 +66,9 @@ function, add a row to the table in `Get-WinrcCommands`.
 
 `Update-Winrc` (or `winrc update`) pulls the latest `winrc.ps1` from GitHub and, when it differs, atomically
 replaces the file on disk and reloads it into the current session — no shell restart.
+The reload re-defines every winrc function (including `prompt`) globally, whether you call
+`Update-Winrc` directly or from inside another function. Functions that the new version
+no longer defines stay available until the shell exits.
 
 ```powershell
 Update-Winrc                # update to latest (release preferred, raw fallback)
