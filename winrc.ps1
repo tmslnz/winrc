@@ -48,9 +48,10 @@ $script:WinrcStateFile = Join-Path $env:LOCALAPPDATA 'winrc\winrc.state.json'
 
 function Main {
     Show-WinrcUpdateNotice
-    # Per-session only: PSReadLine options and the zoxide hook do not persist, so
-    # they must be applied on every shell.
+    # Per-session only: PSReadLine options and the mise/zoxide hooks do not persist,
+    # so they must be applied on every shell.
     Set-ConfigPowershell
+    Set-ConfigMise
     Set-ConfigZoxide
     # Persistent file config is hash-gated: it re-applies only when winrc.ps1
     # changes (self-update, git pull, or a manual edit), not on every shell.
@@ -71,7 +72,7 @@ function Invoke-WinrcConfigure {
         off the per-shell hot path: Main calls Invoke-WinrcConfigureIfNeeded instead,
         which runs this only when winrc.ps1 has changed. Add new *persistent* config
         setters here (never to Main) so they are re-applied automatically on update.
-        Per-session work (PSReadLine tuning, the zoxide hook) stays in Main.
+        Per-session work (PSReadLine tuning, the mise and zoxide hooks) stays in Main.
     #>
     # Each setter can emit Set-ConfigSection's success-stream boolean; consume it so
     # a configure pass never leaks values into the pipeline (host/info output stays).
@@ -250,6 +251,39 @@ function Set-ConfigPowershell {
     Set-PSReadlineKeyHandler -Key UpArrow -Function HistorySearchBackward
     Set-PSReadlineKeyHandler -Key DownArrow -Function HistorySearchForward
     Set-PSReadlineKeyHandler -Key Tab -Function Complete
+}
+
+function Set-ConfigMise {
+    <#
+    Activates mise (https://mise.jdx.dev/shell-setup.html#powershell) so the current
+    project's tools and [env] are applied on every prompt / directory change.
+    #>
+    # Resolve the executable itself: after a reload (Update-Winrc) `mise` is already
+    # the wrapper function defined by the previous activation.
+    $exe = Get-Command mise -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-Not $exe) { return }
+    # Before PowerShell 7 there is no directory-change hook, so mise updates at the next
+    # prompt instead and warns about it on every startup. That limitation is known and
+    # accepted here; hide the warning unless the user has set the variable themselves.
+    if ($PSVersionTable.PSVersion.Major -lt 7 -and $null -eq $env:MISE_PWSH_CHPWD_WARNING) {
+        $env:MISE_PWSH_CHPWD_WARNING = '0'
+    }
+    # mise's activation assumes it runs at profile (global) scope. It marks its hooks
+    # global:, but not the `mise` wrapper function that makes `mise shell` / `mise
+    # deactivate` work, so running it here would drop that wrapper on return. Rather
+    # than promote it by name, promote every function the activation left in this
+    # scope, so helpers added by future mise releases survive too.
+    $before = @{}
+    Get-ChildItem -Path Function: | ForEach-Object { $before[$_.Name] = $_.ScriptBlock }
+    (& $exe.Source activate pwsh) | Out-String | Invoke-Expression
+    foreach ($fn in Get-ChildItem -Path Function:) {
+        # Unchanged by the activation: not ours to touch.
+        if ([object]::ReferenceEquals($before[$fn.Name], $fn.ScriptBlock)) { continue }
+        # Already global (mise declared it global:): nothing to promote.
+        $global = Get-Item -Path "Function:\global:$($fn.Name)" -ErrorAction SilentlyContinue
+        if ($global -and [object]::ReferenceEquals($global.ScriptBlock, $fn.ScriptBlock)) { continue }
+        Set-Item -Path "Function:\global:$($fn.Name)" -Value $fn.ScriptBlock
+    }
 }
 
 function Set-ConfigZoxide {
@@ -1334,6 +1368,7 @@ gallery-dl
 handbrake-cli
 iperf3
 mariadb
+mise
 msys2
 nmap
 nodejs-lts
