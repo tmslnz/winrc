@@ -29,6 +29,10 @@ manifest, or CI — the script is the whole product.
   `Set-Config*` / `Install-PowerShellProfile` call inside `Invoke-WinrcConfigure`, never
   in `Main`. `Main` runs `Invoke-WinrcConfigureIfNeeded`, which content-hash-gates the
   configure pass; keep only per-session work (PSReadLine tuning, zoxide hook) in `Main`.
+- `winrc <command>` is a dispatcher driven by the table in `Get-WinrcCommands` (name ->
+  function + help text). Expose a new user-facing function by adding a row there; the
+  dispatcher mirrors the target's parameters through `dynamicparam`, so do not add
+  per-command parsing or completion code.
 - `Write-WinrcState` **merges** fields (`LastCheckUtc`, `LastConfiguredHash`) and must
   keep doing so — writing the state file with a single field clobbers the other.
 - Non-standard function verbs (`Set-Config*`, `Get-ShortPath`, `Update-Winrc`, …) are

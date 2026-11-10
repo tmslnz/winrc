@@ -45,9 +45,26 @@ Windows PowerShell 5.1 mise updates at the next prompt rather than on `cd`; winr
 `MISE_PWSH_CHPWD_WARNING=0` to silence mise's startup warning about it, unless you have
 already set that variable.
 
+## The `winrc` command
+
+Every user-facing function is also reachable through one entry point, so you can find
+commands with Tab instead of remembering function names:
+
+```powershell
+winrc                       # list the commands (same as `winrc help`)
+winrc <Tab>                 # cycle through the commands
+winrc update -CheckOnly     # same as Update-Winrc -CheckOnly
+winrc update -<Tab>         # the command's own options complete too
+winrc version
+```
+
+Each command maps to one function and accepts exactly that function's parameters;
+`winrc help` shows the mapping. The functions remain callable directly. To expose a new
+function, add a row to the table in `Get-WinrcCommands`.
+
 ## Self-update
 
-`Update-Winrc` pulls the latest `winrc.ps1` from GitHub and, when it differs, atomically
+`Update-Winrc` (or `winrc update`) pulls the latest `winrc.ps1` from GitHub and, when it differs, atomically
 replaces the file on disk and reloads it into the current session — no shell restart.
 
 ```powershell
