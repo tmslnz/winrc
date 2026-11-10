@@ -116,6 +116,134 @@ function Invoke-WinrcConfigureIfNeeded {
     Write-WinrcState -LastConfiguredHash $key
 }
 
+function Get-WinrcCommands {
+    <#
+    .SYNOPSIS
+        The registry of `winrc <command>` subcommands: name -> target function + help.
+    .DESCRIPTION
+        Add a row here to expose a function through the `winrc` CLI. The dispatcher,
+        its tab completion and `winrc help` are all driven by this table, and the
+        target function's own parameters are surfaced automatically.
+    #>
+    [ordered]@{
+        'update'               = @{ Function = 'Update-Winrc'; Help = 'Update winrc.ps1 from GitHub and reload it' }
+        'configure'            = @{ Function = 'Invoke-WinrcConfigure'; Help = 'Re-apply every persistent config section now' }
+        'install-profile'      = @{ Function = 'Install-PowerShellProfile'; Help = 'Write the winrc loader into both PowerShell profiles' }
+        'install-core'         = @{ Function = 'Install-CoreTools'; Help = 'Install Scoop and OpenSSH' }
+        'install-scoop'        = @{ Function = 'Install-Scoop'; Help = 'Install Scoop and its core packages' }
+        'install-scoop-apps'   = @{ Function = 'Install-ScoopApps'; Help = 'Install the Scoop CLI and GUI app lists' }
+        'install-winget-apps'  = @{ Function = 'Install-WingetApps'; Help = 'Install the winget app list' }
+        'install-ssh'          = @{ Function = 'Install-SSH'; Help = 'Install the OpenSSH client and server' }
+        'install-pyenv'        = @{ Function = 'Install-Pyenv'; Help = 'Install pyenv-win' }
+        'install-syncthing'    = @{ Function = 'Install-SyncthingService'; Help = 'Install Syncthing as a Windows service' }
+        'install-sandbox'      = @{ Function = 'Install-WindowsSandbox'; Help = 'Enable Windows Sandbox' }
+        'config-explorer'      = @{ Function = 'Set-ConfigExplorer'; Help = 'Apply the Explorer registry settings' }
+        'config-windows'       = @{ Function = 'Set-ConfigWindows'; Help = 'Apply the Windows registry settings' }
+        'config-keyboard'      = @{ Function = 'Set-ConfigKeyboard'; Help = 'Apply the keyboard scancode map' }
+        'apps'                 = @{ Function = 'Get-InstalledApplications'; Help = 'List installed applications' }
+        'audio-devices'        = @{ Function = 'Get-AudioDevices'; Help = 'List audio endpoint devices' }
+        'uninstall-crap'       = @{ Function = 'Uninstall-Crap'; Help = 'Uninstall bundled Windows apps' }
+        'disable-logitech-mic' = @{ Function = 'Disable-LogitechWebcamMicrophone'; Help = 'Disable Logitech webcam microphones' }
+    }
+}
+
+function winrc {
+    <#
+    .SYNOPSIS
+        Single entry point for winrc's commands: `winrc <command> [options]`.
+    .DESCRIPTION
+        Dispatches to the function registered for <command> in Get-WinrcCommands.
+        The command name tab-completes, and so do the target function's own
+        parameters (`winrc update -Ch<Tab>`), which are forwarded unchanged.
+        `winrc` or `winrc help` lists the commands; `winrc version` prints the version.
+    .EXAMPLE
+        winrc update -CheckOnly
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Position = 0)]
+        [ArgumentCompleter({
+                param($commandName, $parameterName, $wordToComplete)
+                $commands = Get-WinrcCommands
+                $names = @($commands.Keys) + 'help', 'version'
+                foreach ($name in $names) {
+                    if ($name -notlike "$wordToComplete*") { continue }
+                    $tip = if ($commands.Contains($name)) { $commands[$name].Help } else { "winrc $name" }
+                    [System.Management.Automation.CompletionResult]::new($name, $name, 'ParameterValue', $tip)
+                }
+            })]
+        [string]$Command = 'help'
+    )
+    dynamicparam {
+        # Mirror the target function's parameters onto `winrc` itself, so they bind
+        # and tab-complete exactly as if the function had been called directly.
+        $dynamic = [System.Management.Automation.RuntimeDefinedParameterDictionary]::new()
+        # No command bound yet (bare `winrc`, or completing the command name itself).
+        if (-not $Command) { return $dynamic }
+        $entry = (Get-WinrcCommands)[$Command]
+        if (-not $entry) { return $dynamic }
+        $target = Get-Command -Name $entry.Function -CommandType Function -ErrorAction SilentlyContinue
+        if (-not $target) { return $dynamic }
+        $common = @([System.Management.Automation.PSCmdlet]::CommonParameters) + @([System.Management.Automation.PSCmdlet]::OptionalCommonParameters)
+        # Positional arguments shift right by one, because <command> takes position 0.
+        $positions = @{}
+        $mandatory = @{}
+        foreach ($set in $target.ParameterSets) {
+            foreach ($p in $set.Parameters) {
+                if ($p.Position -ge 0 -and -not $positions.ContainsKey($p.Name)) { $positions[$p.Name] = $p.Position + 1 }
+                if ($p.IsMandatory) { $mandatory[$p.Name] = $true }
+            }
+        }
+        foreach ($meta in $target.Parameters.Values) {
+            if ($common -contains $meta.Name -or $meta.Name -eq 'Command') { continue }
+            $attributes = [System.Collections.ObjectModel.Collection[System.Attribute]]::new()
+            $parameter = [System.Management.Automation.ParameterAttribute]::new()
+            if ($positions.ContainsKey($meta.Name)) { $parameter.Position = $positions[$meta.Name] }
+            if ($mandatory.ContainsKey($meta.Name)) { $parameter.Mandatory = $true }
+            $attributes.Add($parameter)
+            foreach ($attribute in $meta.Attributes) {
+                if ($attribute -is [System.Management.Automation.ValidateArgumentsAttribute] -or
+                    $attribute -is [System.Management.Automation.ArgumentCompleterAttribute] -or
+                    $attribute -is [System.Management.Automation.AliasAttribute]) {
+                    $attributes.Add($attribute)
+                }
+            }
+            $dynamic.Add($meta.Name, [System.Management.Automation.RuntimeDefinedParameter]::new($meta.Name, $meta.ParameterType, $attributes))
+        }
+        return $dynamic
+    }
+    end {
+        $commands = Get-WinrcCommands
+        if ($Command -eq 'version') { return $script:WinrcVersion }
+        if ($Command -eq 'help') {
+            Write-Host 'Usage: winrc <command> [options]'
+            Write-Host ''
+            $width = (@($commands.Keys) | Measure-Object -Property Length -Maximum).Maximum
+            foreach ($name in $commands.Keys) {
+                Write-Host ("  {0}  {1}  ({2})" -f $name.PadRight($width), $commands[$name].Help, $commands[$name].Function)
+            }
+            Write-Host ("  {0}  {1}" -f 'help'.PadRight($width), 'Show this list')
+            Write-Host ("  {0}  {1}" -f 'version'.PadRight($width), 'Print the winrc version')
+            Write-Host ''
+            Write-Host 'Options are those of the function in brackets; they tab-complete after the command.'
+            return
+        }
+        $entry = $commands[$Command]
+        if (-not $entry) {
+            Write-Error "winrc: unknown command '$Command'. Run 'winrc help' for the list."
+            return
+        }
+        $target = Get-Command -Name $entry.Function -CommandType Function -ErrorAction Stop
+        # Forward only what the target declares (its own parameters, plus the common
+        # ones such as -Verbose when it is an advanced function).
+        $forward = @{}
+        foreach ($key in $PSBoundParameters.Keys) {
+            if ($key -ne 'Command' -and $target.Parameters.ContainsKey($key)) { $forward[$key] = $PSBoundParameters[$key] }
+        }
+        & $target @forward
+    }
+}
+
 # =============================================================================
 # 5. TERMINAL PROMPT
 # =============================================================================
