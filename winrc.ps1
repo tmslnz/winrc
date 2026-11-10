@@ -268,12 +268,22 @@ function Set-ConfigMise {
     if ($PSVersionTable.PSVersion.Major -lt 7 -and $null -eq $env:MISE_PWSH_CHPWD_WARNING) {
         $env:MISE_PWSH_CHPWD_WARNING = '0'
     }
+    # mise's activation assumes it runs at profile (global) scope. It marks its hooks
+    # global:, but not the `mise` wrapper function that makes `mise shell` / `mise
+    # deactivate` work, so running it here would drop that wrapper on return. Rather
+    # than promote it by name, promote every function the activation left in this
+    # scope, so helpers added by future mise releases survive too.
+    $before = @{}
+    Get-ChildItem -Path Function: | ForEach-Object { $before[$_.Name] = $_.ScriptBlock }
     (& $exe.Source activate pwsh) | Out-String | Invoke-Expression
-    # mise declares its hooks global:, but not the `mise` wrapper function that makes
-    # `mise shell` / `mise deactivate` work. Invoke-Expression here would leave that
-    # wrapper in this function's scope and lose it on return, so promote it.
-    $wrapper = Get-Item -Path Function:\mise -ErrorAction SilentlyContinue
-    if ($wrapper) { Set-Item -Path Function:\global:mise -Value $wrapper.ScriptBlock }
+    foreach ($fn in Get-ChildItem -Path Function:) {
+        # Unchanged by the activation: not ours to touch.
+        if ([object]::ReferenceEquals($before[$fn.Name], $fn.ScriptBlock)) { continue }
+        # Already global (mise declared it global:): nothing to promote.
+        $global = Get-Item -Path "Function:\global:$($fn.Name)" -ErrorAction SilentlyContinue
+        if ($global -and [object]::ReferenceEquals($global.ScriptBlock, $fn.ScriptBlock)) { continue }
+        Set-Item -Path "Function:\global:$($fn.Name)" -Value $fn.ScriptBlock
+    }
 }
 
 function Set-ConfigZoxide {
