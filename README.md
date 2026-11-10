@@ -39,6 +39,12 @@ When `zoxide` is installed, the per-session zoxide hook wires `cd`/`cdi` straigh
 zoxide: `cd` still behaves like `Set-Location` for real paths, but a keyword jumps to the
 matching frecency-ranked directory.
 
+When `mise` is installed, the per-session mise hook runs `mise activate pwsh`, so each
+project's tools and `[env]` variables follow you as you move between directories. On
+Windows PowerShell 5.1 mise updates at the next prompt rather than on `cd`; winrc sets
+`MISE_PWSH_CHPWD_WARNING=0` to silence mise's startup warning about it, unless you have
+already set that variable.
+
 ## Self-update
 
 `Update-Winrc` pulls the latest `winrc.ps1` from GitHub and, when it differs, atomically
@@ -118,7 +124,7 @@ whenever `winrc.ps1` changes:
 Because the hash includes the script's path, moving or renaming the repo also triggers
 a re-run, which re-points the profile loader at the new location.
 
-Per-session-only work stays in `Main`: the PSReadLine tuning and the zoxide hook are
+Per-session-only work stays in `Main`: the PSReadLine tuning and the mise and zoxide hooks are
 re-applied on every shell (they do not persist to disk).
 
 To force a re-apply without editing the file:
