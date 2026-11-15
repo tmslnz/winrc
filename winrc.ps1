@@ -642,8 +642,17 @@ function Set-ConfigSunshine {
     .SYNOPSIS
         Writes the winrc settings block into sunshine.conf and restarts the service.
     .DESCRIPTION
-        nvenc_realtime_hags = disabled works around NVENC stutter and encoder
-        stalls when Hardware-Accelerated GPU Scheduling is on. The config lives
+        Why: with HAGS on, Sunshine runs NVENC at realtime GPU priority, which
+        hits an NVIDIA driver bug: the encoder freezes mid-stream and never
+        recovers, or the driver crashes. DX12 games and near-full VRAM make it
+        more likely. nvenc_realtime_hags = disabled turns realtime priority off.
+        Trade-off: the stream may stutter when a game pegs the GPU; cap the
+        game's frame rate below what the card reaches. If hangs persist, turn
+        HAGS off in Windows as well.
+        https://forums.developer.nvidia.com/t/nvenc-encoder-hangs-on-windows-when-using-d3d11-in-real-time-mode/357465
+        https://github.com/LizardByte/Sunshine/issues/1031
+
+        The config lives
         under Program Files, so both the write and the service restart need an
         elevated shell; a non-elevated configure pass only warns when the setting
         is missing. The service restarts only when the file changed, because a
