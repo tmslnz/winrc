@@ -85,6 +85,7 @@ function Invoke-WinrcConfigure {
     Set-ConfigRhinoceros | Out-Null
     Set-ConfigCyberduck | Out-Null
     Set-ConfigPowerToys | Out-Null
+    Set-ConfigSunshine | Out-Null
 }
 
 function Invoke-WinrcConfigureIfNeeded {
@@ -140,6 +141,7 @@ function Get-WinrcCommands {
         'config-explorer'      = @{ Function = 'Set-ConfigExplorer'; Help = 'Apply the Explorer registry settings' }
         'config-windows'       = @{ Function = 'Set-ConfigWindows'; Help = 'Apply the Windows registry settings' }
         'config-keyboard'      = @{ Function = 'Set-ConfigKeyboard'; Help = 'Apply the keyboard scancode map' }
+        'config-sunshine'      = @{ Function = 'Set-ConfigSunshine'; Help = 'Apply the Sunshine settings and restart its service (elevated)' }
         'apps'                 = @{ Function = 'Get-InstalledApplications'; Help = 'List installed applications' }
         'audio-devices'        = @{ Function = 'Get-AudioDevices'; Help = 'List audio endpoint devices' }
         'uninstall-crap'       = @{ Function = 'Uninstall-Crap'; Help = 'Uninstall bundled Windows apps' }
@@ -633,6 +635,42 @@ function Set-ConfigPowerToys {
     $ TODO
     C:\Users\tmslnz\AppData\Local\Microsoft\PowerToys\Keyboard Manager
     #>
+}
+
+function Set-ConfigSunshine {
+    <#
+    .SYNOPSIS
+        Writes the winrc settings block into sunshine.conf and restarts the service.
+    .DESCRIPTION
+        nvenc_realtime_hags = disabled works around NVENC stutter and encoder
+        stalls when Hardware-Accelerated GPU Scheduling is on. The config lives
+        under Program Files, so both the write and the service restart need an
+        elevated shell; a non-elevated configure pass only warns when the setting
+        is missing. The service restarts only when the file changed, because a
+        restart drops any active stream.
+    #>
+    if (-Not (Test-IsWindows)) { return }
+    $root = Join-Path $env:ProgramFiles 'Sunshine'
+    if (-not [IO.File]::Exists((Join-Path $root 'sunshine.exe'))) { return }
+    $file = Join-Path $root 'config\sunshine.conf'
+    $config = @'
+# BEGIN_SHELLRC
+nvenc_realtime_hags = disabled
+# END_SHELLRC
+'@
+    if (-not (Test-IsAdmin)) {
+        $current = if ([IO.File]::Exists($file)) { [IO.File]::ReadAllText($file) } else { '' }
+        if ($current -notmatch '(?m)^[ \t]*nvenc_realtime_hags[ \t]*=[ \t]*disabled[ \t]*\r?$') {
+            Write-Warning "Sunshine: nvenc_realtime_hags is not set. Run 'winrc config-sunshine' from an elevated shell."
+        }
+        return
+    }
+    # Appended so the block sits after whatever the Sunshine web UI wrote.
+    $changed = Set-ConfigSection -String $config -Path $file -Append
+    if ($changed -and (Get-Service -Name SunshineService -ErrorAction SilentlyContinue)) {
+        Restart-Service -Name SunshineService
+    }
+    $changed
 }
 
 function Set-ConfigExplorer {
