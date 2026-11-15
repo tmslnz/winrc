@@ -401,7 +401,14 @@ function Set-ConfigMise {
     # deactivate` work, so running it here would drop that wrapper on return. Rather
     # than promote it by name, promote every function the activation defines, so
     # helpers added by future mise releases survive too.
-    Invoke-WithGlobalFunctions { (& $exe.Source activate pwsh) | Out-String | Invoke-Expression }
+    # A broken launcher (e.g. a Scoop shim that cannot start its target) prints to stderr
+    # and yields nothing; skip activation then, since Invoke-Expression rejects ''.
+    $activation = (& $exe.Source activate pwsh) | Out-String
+    if ([string]::IsNullOrWhiteSpace($activation)) {
+        Write-Warning "winrc: '$($exe.Source) activate pwsh' produced no output; skipping mise activation."
+        return
+    }
+    Invoke-WithGlobalFunctions { $activation | Invoke-Expression }
 }
 
 function Set-ConfigZoxide {
@@ -409,14 +416,14 @@ function Set-ConfigZoxide {
     if (-Not (Get-Command zoxide -ErrorAction SilentlyContinue)) { return }
     # `--cmd cd` aliases cd/cdi to zoxide's jump functions, so cd keeps normal
     # Set-Location semantics for real paths and adds zoxide's smart-jump for queries.
-    Invoke-Expression (& {
-            $hook = if ($PSVersionTable.PSVersion.Major -ge 6) {
-                'pwd'
-            }
-            else {
-                'prompt'
-            } (zoxide init powershell --hook $hook --cmd cd | Out-String)
-        })
+    $hook = if ($PSVersionTable.PSVersion.Major -ge 6) { 'pwd' } else { 'prompt' }
+    # Same guard as Set-ConfigMise: a launcher that fails to start yields no script.
+    $init = (zoxide init powershell --hook $hook --cmd cd) | Out-String
+    if ([string]::IsNullOrWhiteSpace($init)) {
+        Write-Warning "winrc: 'zoxide init' produced no output; skipping zoxide setup."
+        return
+    }
+    Invoke-Expression $init
 }
 
 function Set-ConfigNpm {
