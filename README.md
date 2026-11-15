@@ -125,6 +125,11 @@ calls `Set-ConfigSection`.
 persistent user `PATH` (so `yak` and friends resolve by name) rather than writing a config
 file.
 
+`Set-ConfigSunshine` appends `nvenc_realtime_hags = disabled` to
+`%ProgramFiles%\Sunshine\config\sunshine.conf` and restarts `SunshineService` when the
+file changed. Both steps need an elevated shell; a non-elevated configure pass only warns
+when the setting is missing. Run `winrc config-sunshine` elevated to apply it on demand.
+
 > Note: the old `New-ConfigSection` / `Update-ConfigSection` are kept as thin aliases of
 > `Set-ConfigSection` so previously dot-sourced callers still work.
 
