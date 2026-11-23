@@ -1,18 +1,31 @@
 # Set-StrictMode -Version
 $progressPreference = 'SilentlyContinue'
 
-# PowerShell 7 and Windows PowerShell 5.1 both honor RemoteSigned, which lets a
-# freshly-downloaded winrc.ps1 run after the user approves it once. Attempt that in
-# the CurrentUser scope only, and only when the effective policy is not already
-# permissive. We deliberately never fail or warn here: when a more-specific scope
-# (group policy, or a -Bypass/-Unrestricted launch) overrides our request, the
-# running session is already able to execute this script, so there is nothing to fix.
-try {
-    if ((Get-ExecutionPolicy) -ne 'RemoteSigned' -and (Get-ExecutionPolicy) -ne 'Bypass' -and (Get-ExecutionPolicy) -ne 'Unrestricted') {
-        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -ErrorAction SilentlyContinue
+# Execution policy is checked before this file runs, so nothing here can rescue the
+# very first load: under RemoteSigned (the Windows "Developer" toggle) a downloaded,
+# unsigned winrc.ps1 is refused outright because it carries the Mark of the Web. The
+# README therefore starts the first run with a Process-scope Bypass. What this block
+# does is make every later load work without that: it persists RemoteSigned for the
+# CurrentUser scope and strips the Mark of the Web from this file, so the profile
+# loader can dot-source it in new shells. The Process scope is ignored on purpose:
+# a -Bypass launch says nothing about the policy future shells will see.
+if ($env:OS -eq 'Windows_NT') {
+    try {
+        $persistentPolicy = 'Undefined'
+        foreach ($scope in 'MachinePolicy', 'UserPolicy', 'CurrentUser', 'LocalMachine') {
+            $p = Get-ExecutionPolicy -Scope $scope
+            if ($p -ne 'Undefined') { $persistentPolicy = $p; break }
+        }
+        $groupPolicySet = (Get-ExecutionPolicy -Scope MachinePolicy) -ne 'Undefined' -or
+                          (Get-ExecutionPolicy -Scope UserPolicy) -ne 'Undefined'
+        if (-not $groupPolicySet -and $persistentPolicy -notin 'RemoteSigned', 'Unrestricted', 'Bypass') {
+            Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force -ErrorAction SilentlyContinue
+        }
     }
+    catch { }
+    Remove-Variable -Name persistentPolicy, scope, p, groupPolicySet -ErrorAction SilentlyContinue
+    if ($PSCommandPath) { Unblock-File -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue }
 }
-catch { }
 
 $CachedAppsList = @()
 

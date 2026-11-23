@@ -7,11 +7,19 @@ fenced config blocks for the tools you use, and can self-update from this repo.
 ## Quick start
 
 1. Clone this repo somewhere stable, e.g. `C:\Users\<you>\winrc` or a `~/dotfiles` dir.
-2. Open a PowerShell prompt and run:
+2. Open a PowerShell prompt in that folder and run:
 
    ```powershell
-   . .\winrc.ps1
+   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force; . .\winrc.ps1
    ```
+
+   The `Bypass` applies to this one PowerShell window only. A plain `. .\winrc.ps1`
+   fails on a fresh Windows install: the default `Restricted` policy blocks all
+   scripts, and `RemoteSigned` (what the Windows "Developer" settings toggle sets)
+   blocks any unsigned file downloaded from the internet, because the browser tags it
+   with the Mark of the Web. On that first run winrc sets `RemoteSigned` for your user
+   (unless group policy controls it) and unblocks its own file, so the profile loads it
+   normally in every new shell.
 
    This runs `Main`, which installs/updates your PowerShell profile (backing up an
    existing one), applies PSReadLine tuning, and — on this first run — writes the
