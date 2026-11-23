@@ -6,26 +6,46 @@ fenced config blocks for the tools you use, and can self-update from this repo.
 
 ## Quick start
 
-1. Clone this repo somewhere stable, e.g. `C:\Users\<you>\winrc` or a `~/dotfiles` dir.
-2. Open a PowerShell prompt in that folder and run:
+Paste this into a PowerShell window (PowerShell 7 or Windows PowerShell 5.1, no admin
+needed):
 
-   ```powershell
-   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force; . .\winrc.ps1
-   ```
+```powershell
+$dir = Join-Path $env:LOCALAPPDATA 'winrc'
+New-Item -ItemType Directory -Force -Path $dir | Out-Null
+Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/tmslnz/winrc/main/winrc.ps1' -OutFile "$dir\winrc.ps1"
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force; . "$dir\winrc.ps1"
+```
 
-   The `Bypass` applies to this one PowerShell window only. A plain `. .\winrc.ps1`
-   fails on a fresh Windows install: the default `Restricted` policy blocks all
-   scripts, and `RemoteSigned` (what the Windows "Developer" settings toggle sets)
-   blocks any unsigned file downloaded from the internet, because the browser tags it
-   with the Mark of the Web. On that first run winrc sets `RemoteSigned` for your user
-   (unless group policy controls it) and unblocks its own file, so the profile loads it
-   normally in every new shell.
+This puts the script at `%LOCALAPPDATA%\winrc\winrc.ps1`, next to winrc's own state
+files. That is the Windows location for per-user, machine-local data: it needs no admin
+rights, it never roams, and OneDrive does not sync it (unlike `Documents`, which
+OneDrive often redirects). The self-updater then keeps the file current in place.
 
-   This runs `Main`, which installs/updates your PowerShell profile (backing up an
-   existing one), applies PSReadLine tuning, and — on this first run — writes the
-   fenced config sections described below. Running it again is safe: every step is
-   idempotent, and the config sections are only re-applied when `winrc.ps1` changes
-   (see [When config sections are applied](#when-config-sections-are-applied)).
+If you want to edit winrc or track it with git, clone the repo instead, e.g. to
+`~\.winrc` alongside `~\.ssh` and `~\.gitconfig`, and run the last line from that
+folder:
+
+```powershell
+git clone https://github.com/tmslnz/winrc.git "$HOME\.winrc"
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force; . "$HOME\.winrc\winrc.ps1"
+```
+
+The `Bypass` applies to that one PowerShell window only. A plain `. .\winrc.ps1`
+fails on a fresh Windows install: the default `Restricted` policy blocks all scripts,
+and `RemoteSigned` (what the Windows "Developer" settings toggle sets) blocks any
+unsigned file a browser downloaded, because the browser tags it with the Mark of the
+Web. On that first run winrc sets `RemoteSigned` for your user (unless group policy
+controls it) and unblocks its own file, so the profile loads it normally in every new
+shell.
+
+The first run calls `Main`, which installs/updates your PowerShell profile (backing up
+an existing one), applies PSReadLine tuning, and writes the fenced config sections
+described below. Running it again is safe: every step is idempotent, and the config
+sections are only re-applied when `winrc.ps1` changes
+(see [When config sections are applied](#when-config-sections-are-applied)).
+
+The profile points at wherever `winrc.ps1` was when you ran it. To move it later,
+move the file and dot-source it once from the new path.
 
 Once installed, your `$PROFILE` contains a `BEGIN_SHELLRC`/`END_SHELLRC` fenced block that
 dot-sources `winrc.ps1` on every new terminal, so the functions below are available in
