@@ -11,19 +11,19 @@ $progressPreference = 'SilentlyContinue'
 # a -Bypass launch says nothing about the policy future shells will see.
 if ($env:OS -eq 'Windows_NT') {
     try {
-        $persistentPolicy = 'Undefined'
-        foreach ($scope in 'MachinePolicy', 'UserPolicy', 'CurrentUser', 'LocalMachine') {
-            $p = Get-ExecutionPolicy -Scope $scope
-            if ($p -ne 'Undefined') { $persistentPolicy = $p; break }
+        $winrcPersistentPolicy = 'Undefined'
+        foreach ($winrcScope in 'MachinePolicy', 'UserPolicy', 'CurrentUser', 'LocalMachine') {
+            $winrcPolicy = Get-ExecutionPolicy -Scope $winrcScope
+            if ($winrcPolicy -ne 'Undefined') { $winrcPersistentPolicy = $winrcPolicy; break }
         }
-        $groupPolicySet = (Get-ExecutionPolicy -Scope MachinePolicy) -ne 'Undefined' -or
+        $winrcGroupPolicySet = (Get-ExecutionPolicy -Scope MachinePolicy) -ne 'Undefined' -or
                           (Get-ExecutionPolicy -Scope UserPolicy) -ne 'Undefined'
-        if (-not $groupPolicySet -and $persistentPolicy -notin 'RemoteSigned', 'Unrestricted', 'Bypass') {
+        if (-not $winrcGroupPolicySet -and $winrcPersistentPolicy -notin 'RemoteSigned', 'Unrestricted', 'Bypass') {
             Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force -ErrorAction SilentlyContinue
         }
     }
     catch { }
-    Remove-Variable -Name persistentPolicy, scope, p, groupPolicySet -ErrorAction SilentlyContinue
+    Remove-Variable -Name winrcPersistentPolicy, winrcScope, winrcPolicy, winrcGroupPolicySet -ErrorAction SilentlyContinue
     if ($PSCommandPath) { Unblock-File -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue }
 }
 
